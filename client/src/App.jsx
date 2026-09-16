@@ -1,7 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MockAuthProvider, useAuth } from './context/MockAuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import AppLayout from './layouts/AppLayout';
+import ProtectedRoute from './components/common/ProtectedRoute';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -23,7 +24,7 @@ function AppIndexRedirect() {
 
 export default function App() {
   return (
-    <MockAuthProvider>
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
           {/* Public Pages */}
@@ -31,28 +32,84 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated / App Shell Routes */}
-          <Route path="/app" element={<AppLayout />}>
+          {/* Authenticated Application Shell */}
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<AppIndexRedirect />} />
 
-            {/* Citizen Routes */}
-            <Route path="citizen" element={<CitizenDashboard />} />
-            <Route path="citizen/submit" element={<SubmitComplaintPage />} />
-            <Route path="citizen/complaints" element={<MyComplaintsPage />} />
+            {/* Citizen Routes - Accessible by Citizens and Admins */}
+            <Route
+              path="citizen"
+              element={
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="citizen/submit"
+              element={
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <SubmitComplaintPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="citizen/complaints"
+              element={
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <MyComplaintsPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Shared Complaint Dossier */}
-            <Route path="complaints/:id" element={<ComplaintDetailsPage />} />
+            {/* Shared Incident Dossier */}
+            <Route
+              path="complaints/:id"
+              element={
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <ComplaintDetailsPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Admin Municipal Routes */}
-            <Route path="admin" element={<AdminDashboard />} />
-            <Route path="admin/complaints" element={<AdminComplaintsPage />} />
-            <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
+            {/* Admin Only Municipal Routes - Strictly Forbidden for Citizens */}
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/complaints"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminComplaintsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminAnalyticsPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
-          {/* Fallback to Home */}
+          {/* Fallback to Public Landing */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </MockAuthProvider>
+    </AuthProvider>
   );
 }

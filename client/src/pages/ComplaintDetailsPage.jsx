@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -11,28 +11,70 @@ import {
   Sparkles, 
   CheckCircle2, 
   Clock, 
-  AlertTriangle,
-  Layers,
-  Check,
-  Share2,
-  Printer
+  AlertTriangle, 
+  Check, 
+  Printer,
+  Loader2,
+  ShieldAlert
 } from 'lucide-react';
-import { getComplaintById } from '../utils/mockData';
-import { StatusBadge, SeverityBadge, DuplicateBadge } from '../components/common/Badge';
+import complaintService from '../services/complaintService';
+import { getComplaintById as getMockComplaintById } from '../utils/mockData';
+import { StatusBadge, SeverityBadge, CategoryBadge, DuplicateBadge } from '../components/common/Badge';
 import AITriageCard from '../components/common/AITriageCard';
 import MapContainer from '../components/common/MapContainer';
 
 export default function ComplaintDetailsPage() {
   const { id } = useParams();
-  const complaint = getComplaintById(id);
+  const [complaint, setComplaint] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!complaint) {
+  useEffect(() => {
+    const loadComplaint = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await complaintService.getComplaintById(id);
+        if (res && res.complaint) {
+          setComplaint(res.complaint);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn(`[ComplaintDetails] Backend fetch failed: ${err.message}. Checking mock store.`);
+      }
+
+      // Fallback to mock store for demo complaints if ID matches CIV-*
+      const mock = getMockComplaintById(id);
+      if (mock) {
+        setComplaint(mock);
+      } else {
+        setError('Complaint not found or access denied.');
+      }
+      setLoading(false);
+    };
+
+    loadComplaint();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-16 text-center max-w-lg mx-auto">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+        <h3 className="text-sm font-bold text-slate-800">Retrieving Complaint Dossier</h3>
+        <p className="text-xs text-slate-500 mt-1">Connecting to municipal records registry...</p>
+      </div>
+    );
+  }
+
+  if (error || !complaint) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-12 text-center max-w-lg mx-auto">
         <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-        <h2 className="text-lg font-bold text-slate-900">Incident Report Not Found</h2>
+        <h2 className="text-lg font-bold text-slate-900">Incident Report Unavailable</h2>
         <p className="text-xs text-slate-500 mt-1 mb-6">
-          The requested complaint ID #{id} does not exist in the municipal registry.
+          {error || `The requested complaint ID #${id} does not exist or you lack permission to view it.`}
         </p>
         <Link
           to="/app/citizen/complaints"
@@ -46,17 +88,29 @@ export default function ComplaintDetailsPage() {
   }
 
   const steps = [
-    { label: 'Submitted', key: 'Submitted' },
-    { label: 'AI Triage', key: 'In Review' },
-    { label: 'Assigned', key: 'Assigned' },
-    { label: 'Work In Progress', key: 'In Progress' },
-    { label: 'Resolved', key: 'Resolved' }
+    { label: 'Submitted', key: 'SUBMITTED' },
+    { label: 'Under Review', key: 'UNDER_REVIEW' },
+    { label: 'In Progress', key: 'IN_PROGRESS' },
+    { label: 'Resolved', key: 'RESOLVED' }
   ];
 
-  const currentStepIdx = complaint.status === 'Resolved' ? 4 :
-                         complaint.status === 'In Progress' ? 3 :
-                         complaint.status === 'Assigned' ? 2 :
-                         complaint.status === 'In Review' ? 1 : 0;
+  const statusNorm = (complaint.status || 'SUBMITTED').toUpperCase();
+  const currentStepIdx = statusNorm === 'RESOLVED' ? 3 :
+                         statusNorm === 'IN_PROGRESS' ? 2 :
+                         ['UNDER_REVIEW', 'IN_REVIEW', 'ASSIGNED'].includes(statusNorm) ? 1 : 0;
+
+  // Extract lat/lng safely from GeoJSON or object
+  let lat = 28.6139;
+  let lng = 77.2090;
+  if (complaint.location?.coordinates && Array.isArray(complaint.location.coordinates)) {
+    lng = complaint.location.coordinates[0];
+    lat = complaint.location.coordinates[1];
+  } else if (complaint.location?.coordinates?.lat) {
+    lat = complaint.location.coordinates.lat;
+    lng = complaint.location.coordinates.lng;
+  }
+
+  const ticketId = complaint._id ? `#${complaint._id.slice(-6).toUpperCase()}` : complaint.id;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -86,10 +140,11 @@ export default function ComplaintDetailsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-              {complaint.id}
+              {ticketId}
             </span>
             <StatusBadge status={complaint.status} />
-            <SeverityBadge severity={complaint.aiAnalysis?.severity} score={complaint.aiAnalysis?.urgencyScore} />
+            <SeverityBadge severity={complaint.severity} score={complaint.aiAnalysis?.urgencyScore} />
+            <CategoryBadge category={complaint.category} />
             <DuplicateBadge duplicateId={complaint.aiAnalysis?.potentialDuplicateOf} />
           </div>
           <span className="text-xs text-slate-500 font-medium">
@@ -111,7 +166,7 @@ export default function ComplaintDetailsPage() {
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
             Resolution Milestone Progress
           </div>
-          <div className="grid grid-cols-5 gap-2 relative">
+          <div className="grid grid-cols-4 gap-2 relative">
             {steps.map((step, idx) => {
               const isCompleted = idx <= currentStepIdx;
               const isCurrent = idx === currentStepIdx;
@@ -137,7 +192,14 @@ export default function ComplaintDetailsPage() {
       {/* Grid: AI Analysis Card & GIS Map */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gemini AI Triage Card */}
-        <AITriageCard aiAnalysis={complaint.aiAnalysis} />
+        <AITriageCard aiAnalysis={complaint.aiAnalysis || {
+          urgencyScore: complaint.severity === 'CRITICAL' ? 95 : complaint.severity === 'HIGH' ? 75 : complaint.severity === 'MEDIUM' ? 50 : 25,
+          severity: complaint.severity,
+          recommendedDepartment: complaint.category ? `${complaint.category.replace('_', ' ')} Dept` : 'Public Works Department',
+          safetyRiskAssessment: complaint.aiSummary || 'Civic infrastructure report filed and awaiting municipal AI classification.',
+          actionableRecommendations: complaint.recommendedAction ? [complaint.recommendedAction] : ['Inspect reported municipal site', 'Verify citizen coordinates on ground'],
+          affectedGroups: complaint.affectedGroup ? [complaint.affectedGroup] : ['Local Residents']
+        }} />
 
         {/* GIS Location & Geo-Coordinates */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
@@ -147,25 +209,30 @@ export default function ComplaintDetailsPage() {
               <span className="text-xs font-bold text-slate-900">Geographic Location</span>
             </div>
             <span className="text-[11px] font-mono text-slate-500">
-              {complaint.location?.coordinates?.lat.toFixed(4)}, {complaint.location?.coordinates?.lng.toFixed(4)}
+              {lat.toFixed(4)}, {lng.toFixed(4)}
             </span>
           </div>
 
           <div className="p-4 space-y-3 flex-1">
             <div className="text-xs text-slate-700">
-              <span className="font-semibold block text-slate-900">{complaint.location.address}</span>
-              <span className="text-slate-500">{complaint.location.ward}, {complaint.location.city}</span>
+              <span className="font-semibold block text-slate-900">{complaint.address}</span>
             </div>
 
-            {complaint.location?.coordinates && (
-              <MapContainer
-                complaints={[complaint]}
-                selectedComplaint={complaint}
-                center={[complaint.location.coordinates.lat, complaint.location.coordinates.lng]}
-                zoom={15}
-                height="220px"
-              />
-            )}
+            <MapContainer
+              complaints={[{
+                id: ticketId,
+                title: complaint.title,
+                category: complaint.category,
+                location: { coordinates: { lat, lng }, address: complaint.address },
+                aiAnalysis: { severity: complaint.severity }
+              }]}
+              selectedComplaint={{
+                location: { coordinates: { lat, lng } }
+              }}
+              center={[lat, lng]}
+              zoom={15}
+              height="220px"
+            />
           </div>
         </div>
       </div>
@@ -174,13 +241,15 @@ export default function ComplaintDetailsPage() {
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
         <h3 className="text-sm font-bold text-slate-900 mb-4">Official Municipal Timeline & Audit Log</h3>
         <div className="space-y-4 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-          {complaint.timeline.map((entry, idx) => (
+          {(complaint.timeline || []).map((entry, idx) => (
             <div key={idx} className="flex items-start gap-4 relative pl-8">
               <div className="w-2.5 h-2.5 rounded-full bg-slate-900 absolute left-2 top-1.5 ring-4 ring-white" />
               <div className="flex-1 text-xs">
                 <div className="flex items-baseline justify-between">
-                  <span className="font-bold text-slate-900">{entry.step}</span>
-                  <span className="text-[11px] text-slate-400 font-mono">{entry.timestamp}</span>
+                  <span className="font-bold text-slate-900">{entry.step || entry.status}</span>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}
+                  </span>
                 </div>
                 <p className="text-slate-600 mt-0.5">{entry.note}</p>
               </div>

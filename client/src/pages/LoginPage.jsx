@@ -1,31 +1,55 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Building2, ArrowRight, ShieldCheck, UserCheck, Lock, Mail, Sparkles } from 'lucide-react';
-import { useAuth } from '../context/MockAuthContext';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Building2, ArrowRight, ShieldCheck, UserCheck, Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('rohan.sharma@example.com');
   const [password, setPassword] = useState('password123');
   const [selectedRole, setSelectedRole] = useState('citizen');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If redirected from a protected route
+  const from = location.state?.from?.pathname;
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
+    setErrorMessage('');
     if (role === 'admin') {
       setEmail('commissioner@metro.gov.in');
+      setPassword('adminpassword123');
     } else {
       setEmail('rohan.sharma@example.com');
+      setPassword('password123');
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login(email, password, selectedRole);
-    if (selectedRole === 'admin') {
-      navigate('/app/admin');
-    } else {
-      navigate('/app/citizen');
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    try {
+      const res = await login(email, password);
+      const userRole = res.user?.role || selectedRole;
+      
+      // Navigate to intended page or default role home
+      if (from) {
+        navigate(from, { replace: true });
+      } else if (userRole === 'admin') {
+        navigate('/app/admin', { replace: true });
+      } else {
+        navigate('/app/citizen', { replace: true });
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'Authentication failed. Please verify credentials.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -91,6 +115,14 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in-50">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -113,9 +145,7 @@ export default function LoginPage() {
                 <label className="block text-xs font-semibold text-slate-700">
                   Password
                 </label>
-                <a href="#" className="text-xs text-blue-600 hover:underline">
-                  Forgot password?
-                </a>
+                <span className="text-[11px] text-slate-400">Min. 6 chars</span>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -132,10 +162,20 @@ export default function LoginPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
               >
-                <span>Sign In as {selectedRole === 'admin' ? 'Municipal Official' : 'Citizen'}</span>
-                <ArrowRight className="w-4 h-4" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying Credentials...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In as {selectedRole === 'admin' ? 'Municipal Official' : 'Citizen'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </form>

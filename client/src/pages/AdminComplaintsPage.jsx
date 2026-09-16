@@ -1,65 +1,115 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Search, 
   Filter, 
   Download, 
-  ChevronRight, 
   MapPin, 
   AlertCircle, 
   CheckCircle2, 
   Layers, 
-  ArrowUpDown,
   Eye,
-  SlidersHorizontal
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
-import { getComplaints, saveComplaints } from '../utils/mockData';
-import { StatusBadge, SeverityBadge, DuplicateBadge } from '../components/common/Badge';
+import { complaintService, COMPLAINT_CATEGORIES } from '../services/complaintService';
+import { StatusBadge, SeverityBadge, CategoryBadge } from '../components/common/Badge';
 
 export default function AdminComplaintsPage() {
-  const [complaints, setComplaints] = useState(getComplaints());
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [severityFilter, setSeverityFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [severityFilter, setSeverityFilter] = useState('ALL');
 
-  const filtered = complaints.filter((c) => {
-    const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          c.location.address.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCat = categoryFilter === 'All' || c.category === categoryFilter;
-    const matchesStat = statusFilter === 'All' || c.status === statusFilter;
-    const matchesSev = severityFilter === 'All' || c.aiAnalysis?.severity === severityFilter;
+  const fetchComplaints = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await complaintService.getAdminComplaints({
+        search: searchQuery,
+        category: categoryFilter,
+        status: statusFilter,
+        severity: severityFilter
+      });
+      setComplaints(res.data?.complaints || res.data || []);
+    } catch (err) {
+      console.error('Failed to load complaints:', err);
+      setError(err.response?.data?.message || 'Failed to load administrative complaints.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return matchesSearch && matchesCat && matchesStat && matchesSev;
-  });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchComplaints();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [categoryFilter, statusFilter, severityFilter, searchQuery]);
 
-  const handleQuickStatusChange = (id, newStatus) => {
-    const updated = complaints.map(c => {
-      if (c.id === id) {
-        return {
-          ...c,
-          status: newStatus,
-          updatedAt: new Date().toISOString(),
-          timeline: [
-            ...c.timeline,
-            {
-              step: `Status Updated to ${newStatus}`,
-              timestamp: new Date().toLocaleString(),
-              note: `Updated by municipal administrator.`
-            }
-          ]
-        };
-      }
-      return c;
-    });
-    setComplaints(updated);
-    saveComplaints(updated);
+  const handleQuickStatusChange = async (id, newStatus) => {
+    try {
+      setUpdatingId(id);
+      await complaintService.updateComplaintStatus(
+        id, 
+        newStatus, 
+        `Status updated to ${newStatus} by municipal administrator.`
+      );
+
+      setComplaints(prev => prev.map(c => {
+        if (c._id === id || c.id === id) {
+          return {
+            ...c,
+            status: newStatus,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return c;
+      }));
+
+      setSuccessMsg(`Complaint status successfully updated to ${newStatus}`);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      alert(err.response?.data?.message || 'Failed to update complaint status.');
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const handleExportCSV = () => {
-    alert('Exporting verified municipal grievance register (CSV)...');
+    if (!complaints.length) {
+      alert('No complaints to export.');
+      return;
+    }
+
+    const headers = ['ID', 'Title', 'Category', 'Severity', 'Status', 'Address', 'Language', 'Created At'];
+    const rows = complaints.map(c => [
+      c._id || c.id,
+      `"${(c.title || '').replace(/"/g, '""')}"`,
+      c.category,
+      c.severity,
+      c.status,
+      `"${(c.address || c.location?.address || '').replace(/"/g, '""')}"`,
+      c.language || 'en',
+      new Date(c.createdAt).toLocaleDateString()
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `civic_ai_complaints_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -77,6 +127,13 @@ export default function AdminComplaintsPage() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={fetchComplaints}
+            title="Refresh feed"
+            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs shadow-2xs transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
             onClick={handleExportCSV}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors"
           >
@@ -85,6 +142,20 @@ export default function AdminComplaintsPage() {
           </button>
         </div>
       </div>
+
+      {successMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-medium text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-xs font-medium text-red-800 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Filter and Search Toolbar */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
@@ -108,12 +179,10 @@ export default function AdminComplaintsPage() {
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-hidden focus:border-blue-600 focus:bg-white"
             >
-              <option value="All">All Categories</option>
-              <option value="Roads & Footpaths">Roads & Footpaths</option>
-              <option value="Water Supply & Drainage">Water Supply & Drainage</option>
-              <option value="Solid Waste & Sanitation">Solid Waste & Sanitation</option>
-              <option value="Street Lighting & Electrical">Street Lighting</option>
-              <option value="Public Transit & Traffic">Public Transit</option>
+              <option value="ALL">All Categories</option>
+              {COMPLAINT_CATEGORIES.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
             </select>
           </div>
 
@@ -124,12 +193,12 @@ export default function AdminComplaintsPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-hidden focus:border-blue-600 focus:bg-white"
             >
-              <option value="All">All Statuses</option>
-              <option value="Submitted">Submitted</option>
-              <option value="In Review">In Review</option>
-              <option value="Assigned">Assigned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
+              <option value="ALL">All Statuses</option>
+              <option value="SUBMITTED">Submitted</option>
+              <option value="UNDER_REVIEW">Under Review</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="REJECTED">Rejected</option>
             </select>
           </div>
 
@@ -140,23 +209,23 @@ export default function AdminComplaintsPage() {
               onChange={(e) => setSeverityFilter(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-hidden focus:border-blue-600 focus:bg-white"
             >
-              <option value="All">All Severities</option>
-              <option value="Critical">Critical (Hazard)</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
+              <option value="ALL">All Severities</option>
+              <option value="CRITICAL">Critical (Hazard)</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
             </select>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-          <span>Showing <strong>{filtered.length}</strong> matching records</span>
-          {(categoryFilter !== 'All' || statusFilter !== 'All' || severityFilter !== 'All' || searchQuery) && (
+          <span>Showing <strong>{complaints.length}</strong> matching records</span>
+          {(categoryFilter !== 'ALL' || statusFilter !== 'ALL' || severityFilter !== 'ALL' || searchQuery) && (
             <button
               onClick={() => {
-                setCategoryFilter('All');
-                setStatusFilter('All');
-                setSeverityFilter('All');
+                setCategoryFilter('ALL');
+                setStatusFilter('ALL');
+                setSeverityFilter('ALL');
                 setSearchQuery('');
               }}
               className="text-blue-600 hover:underline font-medium"
@@ -169,87 +238,110 @@ export default function AdminComplaintsPage() {
 
       {/* Main Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
-                <th className="py-3.5 px-4">Ticket ID</th>
-                <th className="py-3.5 px-4">Issue Details</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">AI Urgency / Severity</th>
-                <th className="py-3.5 px-4">Status & Action</th>
-                <th className="py-3.5 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap align-top">
-                    {c.id}
-                  </td>
-                  
-                  <td className="py-3.5 px-4 max-w-sm align-top">
-                    <Link
-                      to={`/app/complaints/${c.id}`}
-                      className="font-bold text-slate-900 hover:text-blue-600 block line-clamp-1"
-                    >
-                      {c.title}
-                    </Link>
-                    <p className="text-slate-500 text-[11px] truncate mt-0.5">
-                      {c.location.address}
-                    </p>
-                    {c.aiAnalysis?.potentialDuplicateOf && (
-                      <div className="mt-1">
-                        <DuplicateBadge duplicateId={c.aiAnalysis.potentialDuplicateOf} />
-                      </div>
-                    )}
-                  </td>
-
-                  <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 align-top">
-                    <span className="font-medium">{c.category}</span>
-                    <span className="block text-[10px] text-slate-400">{c.location.ward}</span>
-                  </td>
-
-                  <td className="py-3.5 px-4 whitespace-nowrap align-top">
-                    <SeverityBadge 
-                      severity={c.aiAnalysis?.severity} 
-                      score={c.aiAnalysis?.urgencyScore} 
-                    />
-                    <span className="block text-[10px] text-slate-400 mt-1">
-                      Target Dept: {c.aiAnalysis?.recommendedDepartment ? c.aiAnalysis.recommendedDepartment.split(' ')[0] : 'PWD'}
-                    </span>
-                  </td>
-
-                  <td className="py-3.5 px-4 whitespace-nowrap align-top">
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={c.status}
-                        onChange={(e) => handleQuickStatusChange(c.id, e.target.value)}
-                        className="text-xs bg-white border border-slate-200 rounded-md px-2 py-1 font-semibold text-slate-700 focus:outline-hidden focus:border-blue-600"
-                      >
-                        <option value="Submitted">Submitted</option>
-                        <option value="In Review">In Review</option>
-                        <option value="Assigned">Assigned</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Resolved">Resolved</option>
-                      </select>
-                    </div>
-                  </td>
-
-                  <td className="py-3.5 px-4 text-right whitespace-nowrap align-top">
-                    <Link
-                      to={`/app/complaints/${c.id}`}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Inspect</span>
-                    </Link>
-                  </td>
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
+            <p className="text-xs font-medium">Loading municipal complaints registry...</p>
+          </div>
+        ) : complaints.length === 0 ? (
+          <div className="py-16 text-center text-slate-500 text-xs">
+            No complaints found matching current filters.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Ticket ID</th>
+                  <th className="py-3.5 px-4">Issue Details</th>
+                  <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4">AI Urgency / Severity</th>
+                  <th className="py-3.5 px-4">Status & Action</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {complaints.map((c) => {
+                  const compId = c._id || c.id;
+                  const displayId = c._id ? `#${c._id.slice(-6).toUpperCase()}` : c.id;
+                  const isUpdating = updatingId === compId;
+
+                  return (
+                    <tr key={compId} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-700 whitespace-nowrap align-top">
+                        {displayId}
+                      </td>
+                      
+                      <td className="py-3.5 px-4 max-w-sm align-top">
+                        <Link
+                          to={`/app/complaints/${compId}`}
+                          className="font-bold text-slate-900 hover:text-blue-600 block line-clamp-1"
+                        >
+                          {c.title}
+                        </Link>
+                        <p className="text-slate-500 text-[11px] truncate mt-0.5">
+                          {c.address || c.location?.address || 'Municipal Location'}
+                        </p>
+                        {c.affectedGroup && (
+                          <span className="inline-block mt-1 text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            Target: {c.affectedGroup}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 align-top">
+                        <CategoryBadge category={c.category} />
+                        <span className="block text-[10px] text-slate-400 mt-1">
+                          {new Date(c.createdAt).toLocaleDateString()}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap align-top">
+                        <SeverityBadge 
+                          severity={c.severity} 
+                          score={c.aiAnalysis?.urgencyScore} 
+                        />
+                        {c.recommendedAction && (
+                          <span className="block text-[10px] text-slate-500 mt-1 truncate max-w-[160px]" title={c.recommendedAction}>
+                            Rec: {c.recommendedAction}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap align-top">
+                        <div className="flex items-center gap-2">
+                          <select
+                            disabled={isUpdating}
+                            value={c.status}
+                            onChange={(e) => handleQuickStatusChange(compId, e.target.value)}
+                            className="text-xs bg-white border border-slate-200 rounded-md px-2 py-1 font-semibold text-slate-700 focus:outline-hidden focus:border-blue-600 disabled:opacity-50"
+                          >
+                            <option value="SUBMITTED">Submitted</option>
+                            <option value="UNDER_REVIEW">Under Review</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="REJECTED">Rejected</option>
+                          </select>
+                          {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />}
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap align-top">
+                        <Link
+                          to={`/app/complaints/${compId}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Inspect</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

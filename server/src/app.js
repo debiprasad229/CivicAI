@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import { getDBStatus } from './config/db.js';
+import authRoutes from './routes/authRoutes.js';
+import { complaintRoutes, adminComplaintRoutes } from './routes/complaintRoutes.js';
 
 const app = express();
 
@@ -12,7 +15,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -25,15 +27,30 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
+// Health check endpoint reporting server & DB status
 app.get('/api/health', (req, res) => {
+  const dbStatus = getDBStatus();
   res.status(200).json({
     status: 'ok',
     service: 'CivicAI API',
-    message: 'CivicAI API is running smoothly',
+    server: 'running',
+    database: {
+      status: dbStatus.state,
+      connected: dbStatus.connected,
+      host: dbStatus.host,
+      name: dbStatus.name
+    },
+    message: dbStatus.connected 
+      ? 'CivicAI API and MongoDB are running smoothly' 
+      : 'CivicAI API is running (MongoDB disconnected)',
     timestamp: new Date().toISOString()
   });
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/admin/complaints', adminComplaintRoutes);
 
 // 404 handler
 app.use((req, res) => {

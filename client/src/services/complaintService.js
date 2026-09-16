@@ -1,0 +1,55 @@
+import api from './api';
+
+export const COMPLAINT_CATEGORIES = [
+  { id: 'ROAD', label: 'Roads & Footpaths', icon: 'Construction', desc: 'Potholes, broken footpaths, road subsidence' },
+  { id: 'STREET_LIGHT', label: 'Street Lighting', icon: 'Lightbulb', desc: 'Non-functional lamps, dark stretches, cable faults' },
+  { id: 'WATER', label: 'Water Supply', icon: 'Droplets', desc: 'Pipe bursts, contaminated supply, low pressure' },
+  { id: 'DRAINAGE', label: 'Drainage & Sewerage', icon: 'Waves', desc: 'Clogged storm drains, sewage overflows, flooding' },
+  { id: 'WASTE', label: 'Solid Waste & Sanitation', icon: 'Trash2', desc: 'Overflowing dumpsters, garbage piles, open dumping' },
+  { id: 'PUBLIC_TRANSPORT', label: 'Public Transit', icon: 'Bus', desc: 'Damaged bus stops, transit shelters, route signage' },
+  { id: 'ELECTRICITY', label: 'Electricity & Grid', icon: 'Zap', desc: 'Exposed wiring, damaged transformers, sparking poles' },
+  { id: 'OTHER', label: 'Other Civic Amenity', icon: 'HelpCircle', desc: 'Public park damage, fallen trees, community halls' }
+];
+
+export const complaintService = {
+  // Submit a new complaint
+  async createComplaint(complaintData) {
+    return await api.post('/complaints', complaintData);
+  },
+
+  // Get current logged-in citizen's complaints
+  async getMyComplaints() {
+    return await api.get('/complaints/my');
+  },
+
+  // Get single complaint by ID
+  async getComplaintById(id) {
+    return await api.get(`/complaints/${id}`);
+  },
+
+  // Citizen update complaint details
+  async updateComplaint(id, updateData) {
+    return await api.patch(`/complaints/${id}`, updateData);
+  },
+
+  // Admin: Get all complaints with filters
+  async getAdminComplaints(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.category && filters.category !== 'ALL') params.append('category', filters.category);
+    if (filters.status && filters.status !== 'ALL') params.append('status', filters.status);
+    if (filters.severity && filters.severity !== 'ALL') params.append('severity', filters.severity);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.page) params.append('page', filters.page);
+    if (filters.limit) params.append('limit', filters.limit);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return await api.get(`/admin/complaints${query}`);
+  },
+
+  // Admin: Update status and add audit note
+  async updateComplaintStatus(id, status, note) {
+    return await api.patch(`/admin/complaints/${id}/status`, { status, note });
+  }
+};
+
+export default complaintService;

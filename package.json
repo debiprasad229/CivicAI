@@ -1,13 +1,11 @@
 {
-  "name": "civic-ai-server",
+  "name": "civic-ai",
   "version": "1.0.0",
-  "description": "CivicAI Backend API - AI for Digital Public Infrastructure & Governance",
-  "main": "src/index.js",
+  "description": "CivicAI - AI for Digital Public Infrastructure & Governance",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "test": "node test-workflow.mjs"
+    "build": "npm run build --prefix client",
+    "vercel-build": "npm run build --prefix client"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",

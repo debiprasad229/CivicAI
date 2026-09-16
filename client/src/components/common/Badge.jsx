@@ -8,44 +8,59 @@ import {
   UserCheck, 
   Hammer, 
   XCircle,
-  Copy
+  Copy,
+  Construction,
+  Lightbulb,
+  Droplets,
+  Waves,
+  Trash2,
+  Bus,
+  Zap,
+  HelpCircle
 } from 'lucide-react';
 
 export function StatusBadge({ status }) {
+  const norm = (status || 'SUBMITTED').toUpperCase();
+
   const config = {
-    'Submitted': {
+    'SUBMITTED': {
       bg: 'bg-slate-100 text-slate-700 border-slate-200',
       icon: Clock,
       label: 'Submitted'
     },
-    'In Review': {
+    'UNDER_REVIEW': {
       bg: 'bg-blue-50 text-blue-700 border-blue-200',
       icon: Info,
-      label: 'In Review'
+      label: 'Under Review'
     },
-    'Assigned': {
+    'IN_REVIEW': {
+      bg: 'bg-blue-50 text-blue-700 border-blue-200',
+      icon: Info,
+      label: 'Under Review'
+    },
+    'ASSIGNED': {
       bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
       icon: UserCheck,
       label: 'Assigned'
     },
-    'In Progress': {
+    'IN_PROGRESS': {
       bg: 'bg-amber-50 text-amber-800 border-amber-200',
       icon: Hammer,
       label: 'In Progress'
     },
-    'Resolved': {
+    'RESOLVED': {
       bg: 'bg-emerald-50 text-emerald-800 border-emerald-200',
       icon: CheckCircle2,
       label: 'Resolved'
     },
-    'Rejected': {
+    'REJECTED': {
       bg: 'bg-rose-50 text-rose-700 border-rose-200',
       icon: XCircle,
       label: 'Rejected'
     }
   };
 
-  const current = config[status] || config['Submitted'];
+  const current = config[norm] || config['SUBMITTED'];
   const Icon = current.icon;
 
   return (
@@ -57,38 +72,80 @@ export function StatusBadge({ status }) {
 }
 
 export function SeverityBadge({ severity, score }) {
+  const norm = (severity || 'MEDIUM').toUpperCase();
+
   const config = {
-    'Critical': {
+    'CRITICAL': {
       bg: 'bg-red-50 text-red-700 border-red-200',
       icon: AlertCircle,
-      dot: 'bg-red-500'
+      dot: 'bg-red-500',
+      label: 'Critical'
     },
-    'High': {
+    'HIGH': {
       bg: 'bg-orange-50 text-orange-700 border-orange-200',
       icon: AlertTriangle,
-      dot: 'bg-orange-500'
+      dot: 'bg-orange-500',
+      label: 'High'
     },
-    'Medium': {
+    'MEDIUM': {
       bg: 'bg-amber-50 text-amber-700 border-amber-200',
       icon: AlertTriangle,
-      dot: 'bg-amber-500'
+      dot: 'bg-amber-500',
+      label: 'Medium'
     },
-    'Low': {
+    'LOW': {
       bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       icon: Info,
-      dot: 'bg-emerald-500'
+      dot: 'bg-emerald-500',
+      label: 'Low'
     }
   };
 
-  const current = config[severity] || config['Medium'];
+  const current = config[norm] || config['MEDIUM'];
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${current.bg}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${current.dot}`} />
-      <span>{severity}</span>
+      <span>{current.label}</span>
       {score !== undefined && (
         <span className="font-mono text-[10px] opacity-75 ml-0.5">({score})</span>
       )}
+    </span>
+  );
+}
+
+export function CategoryBadge({ category }) {
+  const norm = (category || 'OTHER').toUpperCase();
+
+  const icons = {
+    'ROAD': Construction,
+    'STREET_LIGHT': Lightbulb,
+    'WATER': Droplets,
+    'DRAINAGE': Waves,
+    'WASTE': Trash2,
+    'PUBLIC_TRANSPORT': Bus,
+    'ELECTRICITY': Zap,
+    'OTHER': HelpCircle
+  };
+
+  const labels = {
+    'ROAD': 'Roads & Footpaths',
+    'STREET_LIGHT': 'Street Lighting',
+    'WATER': 'Water Supply',
+    'DRAINAGE': 'Drainage & Sewerage',
+    'WASTE': 'Solid Waste',
+    'PUBLIC_TRANSPORT': 'Transit',
+    'ELECTRICITY': 'Electricity',
+    'OTHER': 'Other'
+  };
+
+  const Icon = icons[norm] || HelpCircle;
+  const label = labels[norm] || category;
+
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
+      <Icon className="w-3 h-3 text-slate-500" />
+      <span>{label}</span>
     </span>
   );
 }

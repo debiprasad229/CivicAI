@@ -100,17 +100,35 @@ export default function MapContainer({
     markersGroupRef.current.clearLayers();
 
     const severityColors = {
+      'CRITICAL': '#ef4444',
       'Critical': '#ef4444',
+      'HIGH': '#f97316',
       'High': '#f97316',
+      'MEDIUM': '#eab308',
       'Medium': '#eab308',
+      'LOW': '#10b981',
       'Low': '#10b981'
     };
 
-    const validComplaints = complaints.filter(c => c.location && c.location.coordinates);
+    const getCoords = (loc) => {
+      if (!loc || !loc.coordinates) return null;
+      if (Array.isArray(loc.coordinates) && loc.coordinates.length >= 2) {
+        // GeoJSON [longitude, latitude] -> Leaflet [latitude, longitude]
+        return [loc.coordinates[1], loc.coordinates[0]];
+      }
+      if (loc.coordinates.lat != null && loc.coordinates.lng != null) {
+        return [loc.coordinates.lat, loc.coordinates.lng];
+      }
+      return null;
+    };
 
-    validComplaints.forEach((c) => {
-      const coords = [c.location.coordinates.lat, c.location.coordinates.lng];
-      const color = severityColors[c.aiAnalysis?.severity] || '#3b82f6';
+    const validComplaints = complaints
+      .map(c => ({ item: c, coords: getCoords(c.location) }))
+      .filter(entry => entry.coords !== null);
+
+    validComplaints.forEach(({ item: c, coords }) => {
+      const sevKey = c.severity || c.aiAnalysis?.severity;
+      const color = severityColors[sevKey] || '#3b82f6';
       const icon = createColoredIcon(color);
 
       const marker = L.marker(coords, { icon });
@@ -118,10 +136,10 @@ export default function MapContainer({
       const popupContent = `
         <div style="font-family: inherit; font-size: 12px; max-width: 220px; padding: 2px;">
           <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px; font-size: 13px;">${c.title}</div>
-          <div style="color: #64748b; margin-bottom: 6px;">${c.location.address || c.location.ward}</div>
+          <div style="color: #64748b; margin-bottom: 6px;">${c.address || c.location?.address || 'Civic Location'}</div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-weight: 600; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #f1f5f9; color: #334155;">${c.category}</span>
-            <span style="font-weight: 600; font-size: 10px; color: ${color};">${c.aiAnalysis?.severity || c.status}</span>
+            <span style="font-weight: 600; font-size: 10px; color: ${color};">${c.severity || c.status}</span>
           </div>
         </div>
       `;
@@ -136,12 +154,12 @@ export default function MapContainer({
     });
 
     // If single complaint selected or coordinates provided, pan to it
-    if (selectedComplaint && selectedComplaint.location?.coordinates) {
-      const { lat, lng } = selectedComplaint.location.coordinates;
-      mapInstanceRef.current.setView([lat, lng], 15);
+    const selectedCoords = selectedComplaint ? getCoords(selectedComplaint.location) : null;
+    if (selectedCoords) {
+      mapInstanceRef.current.setView(selectedCoords, 15);
     } else if (validComplaints.length > 0) {
       // Fit bounds
-      const bounds = L.latLngBounds(validComplaints.map(c => [c.location.coordinates.lat, c.location.coordinates.lng]));
+      const bounds = L.latLngBounds(validComplaints.map(e => e.coords));
       mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
   }, [complaints, selectedComplaint]);

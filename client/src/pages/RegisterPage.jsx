@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building2, ArrowRight, User, Mail, Phone, MapPin, Lock, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../context/MockAuthContext';
+import { Building2, ArrowRight, User, Mail, Phone, MapPin, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -13,17 +13,47 @@ export default function RegisterPage() {
     confirmPassword: 'password123'
   });
 
-  const { login } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login(formData.email, formData.password, 'citizen');
-    navigate('/app/citizen');
+    setErrorMessage('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setErrorMessage('Passwords do not match. Please verify.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await register({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        ward: formData.ward,
+        password: formData.password,
+        role: 'citizen'
+      });
+      navigate('/app/citizen', { replace: true });
+    } catch (err) {
+      setErrorMessage(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -45,6 +75,15 @@ export default function RegisterPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 sm:px-10 shadow-xs border border-slate-200 sm:rounded-2xl">
+          
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in-50">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -155,10 +194,20 @@ export default function RegisterPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
               >
-                <span>Complete Registration</span>
-                <ArrowRight className="w-4 h-4" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Creating Account...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Complete Registration</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </form>

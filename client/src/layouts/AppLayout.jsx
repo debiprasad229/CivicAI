@@ -21,16 +21,22 @@ import {
   Layers,
   ArrowLeftRight
 } from 'lucide-react';
-import { useAuth } from '../context/MockAuthContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { user, role, switchRole, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const isCitizen = role === 'citizen';
+  const isAdmin = role === 'admin';
+
+  const displayName = user?.name || (isAdmin ? 'Dr. Neha Kapoor (IAS)' : 'Rohan Sharma');
+  const displayEmail = user?.email || (isAdmin ? 'commissioner@metro.gov.in' : 'citizen@civic.gov');
+  const displayWard = user?.ward || (isAdmin ? 'Central Command Headquarters' : 'Ward 14 (Central)');
+  const avatarInitials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
   const citizenNav = [
     { name: 'Dashboard', path: '/app/citizen', icon: LayoutDashboard },
@@ -47,10 +53,8 @@ export default function AppLayout() {
   const currentNav = isCitizen ? citizenNav : adminNav;
 
   const handleToggleRole = () => {
-    const nextRole = isCitizen ? 'admin' : 'citizen';
-    switchRole(nextRole);
-    if (nextRole === 'admin') {
-      navigate('/app/admin');
+    if (isCitizen) {
+      navigate('/login', { state: { targetRole: 'admin' } });
     } else {
       navigate('/app/citizen');
     }
@@ -58,7 +62,7 @@ export default function AppLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/login');
   };
 
   return (
@@ -135,10 +139,10 @@ export default function AppLayout() {
                 className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-hidden"
               >
                 <div className="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-semibold">
-                  {user.avatarInitials}
+                  {avatarInitials}
                 </div>
                 <div className="hidden md:block text-left">
-                  <div className="text-xs font-semibold text-slate-900 leading-tight">{user.name}</div>
+                  <div className="text-xs font-semibold text-slate-900 leading-tight">{displayName}</div>
                   <div className="text-[10px] text-slate-500 leading-tight capitalize">
                     {role === 'admin' ? 'Municipal Officer' : 'Resident Citizen'}
                   </div>
@@ -152,10 +156,10 @@ export default function AppLayout() {
                   onClick={() => setUserMenuOpen(false)}
                 >
                   <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-xs font-semibold text-slate-900">{user.name}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                    <p className="text-xs font-semibold text-slate-900">{displayName}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{displayEmail}</p>
                     <span className="inline-block mt-1.5 px-2 py-0.5 rounded-sm bg-slate-100 text-slate-700 text-[10px] font-semibold">
-                      {user.ward}
+                      {displayWard}
                     </span>
                   </div>
 
