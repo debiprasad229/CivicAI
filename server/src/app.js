@@ -30,6 +30,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'CivicAI API',
+    message: 'CivicAI API is running smoothly',
     timestamp: new Date().toISOString()
   });
 });
