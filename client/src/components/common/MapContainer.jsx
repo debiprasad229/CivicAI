@@ -2,14 +2,19 @@ import React from 'react';
 import CivicMap from '../maps/CivicMap';
 
 /**
- * Common MapContainer Component (wrapper around CivicMap for backward compatibility)
+ * Common MapContainer Component (wrapper around CivicMap for backward compatibility and hotspot support)
  */
 export default function MapContainer({ 
   complaints = [], 
   selectedComplaint = null, 
   onSelectComplaint = null,
+  hotspots = [],
+  selectedHotspot = null,
+  onSelectHotspot = null,
+  showHotspots = true,
+  showComplaints = true,
   center = [28.6139, 77.2090], 
-  zoom = 13,
+  zoom = 13, 
   height = '400px',
   interactive = true,
   onLocationSelect = null,
@@ -21,6 +26,11 @@ export default function MapContainer({
       complaints={complaints}
       selectedComplaint={selectedComplaint}
       onSelectComplaint={onSelectComplaint}
+      hotspots={hotspots}
+      selectedHotspot={selectedHotspot}
+      onSelectHotspot={onSelectHotspot}
+      showHotspots={showHotspots}
+      showComplaints={showComplaints}
       selectedLocation={selectedLocation}
       onLocationSelect={onLocationSelect}
       center={center}

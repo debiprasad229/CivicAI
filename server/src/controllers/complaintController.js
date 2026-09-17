@@ -1,4 +1,5 @@
 import Complaint, { COMPLAINT_CATEGORIES, COMPLAINT_STATUSES, COMPLAINT_SEVERITIES } from '../models/Complaint.js';
+import geminiService, { sanitizeError } from '../services/gemini.service.js';
 
 // @desc    Submit a new infrastructure grievance
 // @route   POST /api/complaints
@@ -56,6 +57,7 @@ export const createComplaint = async (req, res) => {
       }
     ];
 
+    // 1. Save complaint immediately with PENDING AI status
     const complaint = await Complaint.create({
       title: title.trim(),
       description: description.trim(),
@@ -70,8 +72,68 @@ export const createComplaint = async (req, res) => {
       },
       address: address.trim(),
       createdBy: req.user._id,
-      timeline: initialTimeline
+      timeline: initialTimeline,
+      aiAnalysis: {
+        status: 'PENDING'
+      }
     });
+
+    // 2. Analyze with Gemini (if API key configured) & 3. Update complaint
+    try {
+      if (process.env.GEMINI_API_KEY?.trim()) {
+        const aiResult = await geminiService.analyzeComplaint({
+          title: complaint.title,
+          description: complaint.description,
+          language: complaint.language,
+          category: complaint.category,
+          address: complaint.address,
+          location: complaint.location
+        });
+
+        // Update complaint with structured AI triage results
+        complaint.severity = aiResult.severity || complaint.severity;
+        if (aiResult.category && COMPLAINT_CATEGORIES.includes(aiResult.category)) {
+          complaint.category = aiResult.category;
+        }
+        complaint.aiSummary = aiResult.summary || complaint.aiSummary;
+        if (Array.isArray(aiResult.affectedGroup) && aiResult.affectedGroup.length > 0 && complaint.affectedGroup.length === 0) {
+          complaint.affectedGroup = aiResult.affectedGroup;
+        }
+        if (Array.isArray(aiResult.recommendedAction) && aiResult.recommendedAction.length > 0) {
+          complaint.recommendedAction = aiResult.recommendedAction;
+        }
+
+        complaint.aiAnalysis = {
+          status: 'COMPLETED',
+          reasoning: aiResult.reasoning || '',
+          completedAt: new Date(),
+          rawResponse: aiResult
+        };
+
+        // Append audit timeline entry
+        complaint.timeline.push({
+          status: 'SUBMITTED',
+          note: `AI automated triage completed (Severity: ${complaint.severity}, Category: ${complaint.category})`,
+          updatedBy: req.user._id,
+          timestamp: new Date()
+        });
+
+        await complaint.save();
+      } else {
+        // If GEMINI_API_KEY is not set, complaint remains saved with PENDING status
+        console.log(`[ComplaintController] Complaint #${complaint._id} saved. AI analysis marked as PENDING (GEMINI_API_KEY not configured).`);
+      }
+    } catch (aiError) {
+      // If Gemini fails, complaint is still safely saved; mark AI analysis as pending/failed
+      const safeMessage = sanitizeError(aiError);
+      console.warn(`[ComplaintController] AI triage error for complaint #${complaint._id}: ${safeMessage}. Saved with status PENDING.`);
+      
+      complaint.aiAnalysis = {
+        status: 'PENDING',
+        error: safeMessage
+      };
+      await complaint.save().catch(() => {});
+    }
 
     return res.status(201).json({
       success: true,
@@ -79,10 +141,11 @@ export const createComplaint = async (req, res) => {
       complaint
     });
   } catch (error) {
-    console.error('[ComplaintController.createComplaint] Error:', error.message);
+    const safeError = sanitizeError(error);
+    console.error('[ComplaintController.createComplaint] Error:', safeError);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Server error creating complaint'
+      message: safeError || 'Server error creating complaint'
     });
   }
 };
@@ -314,3 +377,113 @@ export const updateComplaintStatus = async (req, res) => {
     });
   }
 };
+
+// @desc    Detect nearby similar or duplicate complaints using geospatial + AI
+// @route   GET /api/complaints/:id/similar
+// @access  Private (Citizen owner or Admin)
+export const getSimilarComplaints = async (req, res) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: `Complaint #${req.params.id} not found`
+      });
+    }
+
+    // Check authorization: complaint creator or admin
+    const isOwner = complaint.createdBy.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You can only inspect duplicate analysis for your own complaints'
+      });
+    }
+
+    if (!complaint.location?.coordinates || !Array.isArray(complaint.location.coordinates) || complaint.location.coordinates.length < 2) {
+      return res.status(200).json({
+        success: true,
+        complaintId: complaint._id,
+        hasCandidates: false,
+        similarComplaints: [],
+        summaryExplanation: 'No geographic coordinates available on this complaint for geospatial proximity search.',
+        adminReviewRequired: true
+      });
+    }
+
+    const maxDistanceMeters = Number(req.query.radius) || 1000; // 1km default radius
+
+    // 1. Filter candidates by geographic proximity ($near) and matching category
+    // Using 2dsphere geospatial index
+    let candidates = [];
+    try {
+      candidates = await Complaint.find({
+        _id: { $ne: complaint._id },
+        category: complaint.category,
+        status: { $ne: 'REJECTED' },
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: complaint.location.coordinates
+            },
+            $maxDistance: maxDistanceMeters
+          }
+        }
+      })
+      .limit(5)
+      .select('title description category severity status location address createdAt aiSummary')
+      .lean();
+    } catch (geoErr) {
+      console.warn('[ComplaintController.getSimilarComplaints] $near query fallback:', geoErr.message);
+      // Fallback in case 2dsphere index is still building or non-standard geo environment
+      candidates = await Complaint.find({
+        _id: { $ne: complaint._id },
+        category: complaint.category,
+        status: { $ne: 'REJECTED' }
+      })
+      .limit(5)
+      .select('title description category severity status location address createdAt aiSummary')
+      .lean();
+    }
+
+    if (!candidates || candidates.length === 0) {
+      return res.status(200).json({
+        success: true,
+        complaintId: complaint._id,
+        hasCandidates: false,
+        candidateCount: 0,
+        similarComplaints: [],
+        summaryExplanation: `No existing grievances found within ${maxDistanceMeters}m radius in the '${complaint.category}' category.`,
+        adminReviewRequired: true
+      });
+    }
+
+    // 2. Use AI on this small candidate set (max 5)
+    const duplicateAnalysis = await geminiService.detectSimilarComplaints({
+      targetComplaint: complaint,
+      candidates
+    });
+
+    return res.status(200).json({
+      success: true,
+      complaintId: complaint._id,
+      hasCandidates: true,
+      candidateCount: candidates.length,
+      searchRadiusMeters: maxDistanceMeters,
+      similarComplaints: duplicateAnalysis.similarComplaints,
+      summaryExplanation: duplicateAnalysis.summaryExplanation,
+      adminReviewRequired: true
+    });
+  } catch (error) {
+    const safeErr = sanitizeError(error);
+    console.error('[ComplaintController.getSimilarComplaints] Error:', safeErr);
+    return res.status(500).json({
+      success: false,
+      message: safeErr || 'Error detecting similar complaints'
+    });
+  }
+};
+

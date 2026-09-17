@@ -85,6 +85,14 @@ const complaintSchema = new mongoose.Schema(
       default: ''
     },
     aiAnalysis: {
+      status: { 
+        type: String, 
+        enum: ['PENDING', 'COMPLETED', 'FAILED'], 
+        default: 'PENDING' 
+      },
+      reasoning: { type: String, default: '' },
+      error: { type: String, default: '' },
+      completedAt: { type: Date },
       urgencyScore: { type: Number, min: 0, max: 100, default: 50 },
       subCategory: { type: String, default: '' },
       safetyRiskAssessment: { type: String, default: '' },

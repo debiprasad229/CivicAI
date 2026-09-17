@@ -6,6 +6,9 @@ import cors from 'cors';
 import { getDBStatus } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import { complaintRoutes, adminComplaintRoutes } from './routes/complaintRoutes.js';
+import adminAnalyticsRoutes from './routes/adminAnalyticsRoutes.js';
+import hotspotRoutes from './routes/hotspotRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +64,9 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/admin/complaints', adminComplaintRoutes);
+app.use('/api/admin/analytics', adminAnalyticsRoutes);
+app.use('/api/admin/hotspots', hotspotRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -4,6 +4,7 @@ import {
   getMyComplaints,
   getComplaintById,
   updateComplaint,
+  getSimilarComplaints,
   getAdminComplaints,
   updateComplaintStatus
 } from '../controllers/complaintController.js';
@@ -16,6 +17,7 @@ complaintRoutes.use(protect); // All complaint routes require authentication
 complaintRoutes.post('/', createComplaint);
 complaintRoutes.get('/my', getMyComplaints);
 complaintRoutes.get('/:id', getComplaintById);
+complaintRoutes.get('/:id/similar', getSimilarComplaints);
 complaintRoutes.patch('/:id', updateComplaint);
 
 // Admin Complaints Router (Mounted at /api/admin/complaints)

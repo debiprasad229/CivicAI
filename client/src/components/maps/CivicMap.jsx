@@ -5,37 +5,25 @@ import {
   toGeoJsonCoords, 
   createSelectedLocationIcon, 
   createSeverityMarkerIcon, 
+  createHotspotMarkerIcon,
   getSeverityConfig,
   setupTileLayer,
   SEVERITY_CONFIG
 } from '../../utils/leafletUtils';
 import { 
   Layers, 
-  RotateCcw,
-  ChevronDown,
-  ChevronUp,
-  Crosshair
+  RotateCcw, 
+  ChevronDown, 
+  ChevronUp, 
+  Crosshair,
+  Flame,
+  MapPin
 } from 'lucide-react';
 
 /**
  * Reusable Civic GIS Map Component
  * 
- * @param {Object} props
- * @param {Array} props.complaints - Array of existing complaint objects
- * @param {Array|Object} props.selectedLocation - Currently selected coordinates [longitude, latitude] or {lat, lng}
- * @param {Function} props.onLocationSelect - Callback receiving [longitude, latitude]
- * @param {Object} props.selectedComplaint - Highlighted complaint
- * @param {Function} props.onSelectComplaint - Callback when an existing complaint marker is clicked
- * @param {Array} props.center - Initial map center [lat, lng] (default: [28.6139, 77.2090])
- * @param {number} props.zoom - Initial zoom level (default: 13)
- * @param {string} props.height - Container height (default: '400px')
- * @param {string} props.className - Additional CSS classes
- * @param {boolean} props.selectable - Whether clicking sets selectedLocation (default: false)
- * @param {boolean} props.draggableMarker - Whether the selected marker can be dragged (default: false)
- * @param {boolean} props.showLegend - Whether to display GIS severity legend (default: true)
- * @param {boolean} props.showControls - Whether to show GIS tools toolbar (default: true)
- * @param {boolean} props.fitBoundsOnLoad - Automatically fit bounds to complaints (default: true)
- * @param {string} props.geoapifyStyle - Geoapify map style (default: 'osm-bright')
+ * Supports both individual complaint markers and geographic hotspot cluster layers
  */
 export default function CivicMap({
   complaints = [],
@@ -43,6 +31,11 @@ export default function CivicMap({
   onLocationSelect = null,
   selectedComplaint = null,
   onSelectComplaint = null,
+  hotspots = [],
+  selectedHotspot = null,
+  onSelectHotspot = null,
+  showHotspots = true,
+  showComplaints = true,
   center = [28.6139, 77.2090],
   zoom = 13,
   height = '400px',
@@ -57,11 +50,13 @@ export default function CivicMap({
   const containerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const complaintsLayerRef = useRef(null);
+  const hotspotsLayerRef = useRef(null);
   const selectedMarkerRef = useRef(null);
   const tileLayerRef = useRef(null);
 
   const [mapProvider, setMapProvider] = useState('loading');
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [activeLayerMode, setActiveLayerMode] = useState('all'); // 'all' | 'hotspots' | 'complaints'
 
   // Normalize selected location to Leaflet [lat, lng] and GeoJSON [lng, lat]
   const leafletSelected = toLeafletCoords(selectedLocation);
@@ -72,11 +67,9 @@ export default function CivicMap({
   const handleMapClick = useCallback((e) => {
     if (!selectable && !onLocationSelect) return;
     const { lat, lng } = e.latlng;
-    // Standard GeoJSON format: [longitude, latitude]
     const geoJsonCoords = [Number(lng), Number(lat)];
     
     if (onLocationSelect) {
-      // Pass standard [longitude, latitude]
       onLocationSelect(geoJsonCoords, { lat, lng, coordinates: geoJsonCoords });
     }
   }, [selectable, onLocationSelect]);
@@ -93,10 +86,10 @@ export default function CivicMap({
       const map = L.map(containerRef.current, {
         center: initialCenter,
         zoom: zoom,
-        zoomControl: false, // We add zoom control in bottom-right for clean UX
+        zoomControl: false,
         scrollWheelZoom: true,
         touchZoom: true,
-        attributionControl: false // Add cleanly with custom positioning
+        attributionControl: false
       });
 
       // Custom positioned zoom controls
@@ -115,6 +108,7 @@ export default function CivicMap({
 
       // Dedicated layer groups
       complaintsLayerRef.current = L.layerGroup().addTo(map);
+      hotspotsLayerRef.current = L.layerGroup().addTo(map);
 
       mapInstanceRef.current = map;
     }
@@ -136,7 +130,6 @@ export default function CivicMap({
 
     resizeObserver.observe(containerRef.current);
 
-    // Initial invalidate after DOM settling
     const timer = setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
@@ -168,7 +161,6 @@ export default function CivicMap({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // If marker already exists, remove it
     if (selectedMarkerRef.current) {
       map.removeLayer(selectedMarkerRef.current);
       selectedMarkerRef.current = null;
@@ -182,21 +174,14 @@ export default function CivicMap({
         zIndexOffset: 1000
       });
 
-      if (draggableMarker) {
+      if (draggableMarker && onLocationSelect) {
         marker.on('dragend', (e) => {
-          const latlng = e.target.getLatLng();
-          const geoJson = [Number(latlng.lng), Number(latlng.lat)];
-          if (onLocationSelect) {
-            onLocationSelect(geoJson, { 
-              lat: latlng.lat, 
-              lng: latlng.lng, 
-              coordinates: geoJson 
-            });
-          }
+          const { lat, lng } = e.target.getLatLng();
+          const geoJsonCoords = [Number(lng), Number(lat)];
+          onLocationSelect(geoJsonCoords, { lat, lng, coordinates: geoJsonCoords });
         });
       }
 
-      // GeoJSON [longitude, latitude] formatted display
       const geoJson = toGeoJsonCoords(selectedLocation);
       const coordsText = geoJson 
         ? `[${geoJson[0].toFixed(5)}, ${geoJson[1].toFixed(5)}]` 
@@ -227,7 +212,7 @@ export default function CivicMap({
   }, [leafletSelected, draggableMarker, selectedLocation, onLocationSelect]);
 
   /**
-   * Render Existing Complaints Markers
+   * Render Complaints Markers Layer
    */
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -236,10 +221,13 @@ export default function CivicMap({
 
     layer.clearLayers();
 
+    // Check layer visibility
+    const shouldDisplayComplaints = showComplaints && (activeLayerMode === 'all' || activeLayerMode === 'complaints');
+    if (!shouldDisplayComplaints) return;
+
     const validEntries = [];
 
     complaints.forEach((c) => {
-      // Find coordinates: GeoJSON [longitude, latitude] or lat/lng object
       const rawCoords = c.location?.coordinates || c.coordinates || (c.location && [c.location.lng, c.location.lat]);
       const coords = toLeafletCoords(rawCoords);
 
@@ -298,8 +286,8 @@ export default function CivicMap({
       validEntries.push(coords);
     });
 
-    // Auto fit bounds if requested and complaints exist
-    if (fitBoundsOnLoad && validEntries.length > 0 && !selectedLocation) {
+    // Auto fit bounds if requested and complaints exist and no hotspot selected
+    if (fitBoundsOnLoad && validEntries.length > 0 && !selectedLocation && !selectedHotspot) {
       try {
         const bounds = L.latLngBounds(validEntries);
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
@@ -307,14 +295,142 @@ export default function CivicMap({
         // ignore bounds calculation edge cases
       }
     }
-  }, [complaints, selectedComplaint, onSelectComplaint, fitBoundsOnLoad, selectedLocation]);
+  }, [complaints, selectedComplaint, onSelectComplaint, fitBoundsOnLoad, selectedLocation, showComplaints, activeLayerMode, selectedHotspot]);
+
+  /**
+   * Render Geographic Hotspots Layer (Concentric Circles & Distinct Radar Markers)
+   */
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const layer = hotspotsLayerRef.current;
+    if (!map || !layer) return;
+
+    layer.clearLayers();
+
+    const shouldDisplayHotspots = showHotspots && (activeLayerMode === 'all' || activeLayerMode === 'hotspots');
+    if (!shouldDisplayHotspots || !hotspots.length) return;
+
+    hotspots.forEach((hotspot) => {
+      const coords = [hotspot.latitude, hotspot.longitude];
+      const isSelected = selectedHotspot && (selectedHotspot.id === hotspot.id);
+      const score = hotspot.priorityScore || 0;
+
+      // Color scheme based on priority score
+      let color = '#ef4444'; // High hazard
+      if (score < 45) {
+        color = '#3b82f6';
+      } else if (score < 70) {
+        color = '#f97316';
+      }
+
+      // 1. Draw Geographic Cluster Perimeter Circle
+      const radius = Math.max(80, hotspot.radiusMeters || 200);
+      const circle = L.circle(coords, {
+        radius: radius,
+        color: color,
+        weight: isSelected ? 3 : 2,
+        dashArray: isSelected ? null : '4, 6',
+        fillColor: color,
+        fillOpacity: isSelected ? 0.25 : 0.15,
+        interactive: true
+      });
+
+      // 2. Draw Distinct Hotspot Marker Icon
+      const icon = createHotspotMarkerIcon(hotspot, isSelected);
+      const marker = L.marker(coords, {
+        icon,
+        zIndexOffset: isSelected ? 1200 : 800
+      });
+
+      // 3. Rich Statistics Popup
+      const statsPopup = `
+        <div class="p-3.5 text-xs" style="min-width: 250px; max-width: 320px;">
+          <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100">
+            <div class="flex items-center gap-1.5 font-bold text-slate-900">
+              <span style="font-size: 15px;">🔥</span>
+              <span>Geographic Hotspot</span>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[11px] font-black tracking-wide" style="background-color: ${color}20; color: ${color}; border: 1px solid ${color}50;">
+              Priority: ${score}/100
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mb-2.5">
+            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+              <div class="text-[10px] text-slate-500 font-semibold uppercase">Cluster Volume</div>
+              <div class="text-sm font-extrabold text-slate-900">${hotspot.complaintCount} Grievances</div>
+            </div>
+            <div class="bg-red-50/70 p-2 rounded-lg border border-red-100">
+              <div class="text-[10px] text-red-600 font-semibold uppercase">Critical / High</div>
+              <div class="text-sm font-extrabold text-red-700">${hotspot.highPriorityCount} Hazards</div>
+            </div>
+          </div>
+
+          <div class="space-y-1.5 text-[11px] text-slate-600 mb-2">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500 font-medium">Dominant Domain:</span>
+              <span class="font-bold text-slate-900">${hotspot.dominantCategory}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500 font-medium">Cluster Radius:</span>
+              <span class="font-mono text-slate-700 font-semibold">~${hotspot.radiusMeters || 100}m</span>
+            </div>
+            ${hotspot.addresses && hotspot.addresses.length > 0 ? `
+              <div class="text-[10px] text-slate-500 truncate pt-1 border-t border-slate-100 flex items-center gap-1">
+                <span>📍</span>
+                <span class="truncate">${hotspot.addresses[0]}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+            <span class="text-slate-400">Click inspect in card below</span>
+            <span class="font-semibold text-blue-600">Active Hotspot</span>
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(statsPopup, { className: 'civic-leaflet-popup' });
+      circle.bindPopup(statsPopup, { className: 'civic-leaflet-popup' });
+
+      const handleHotspotClick = () => {
+        if (onSelectHotspot) {
+          onSelectHotspot(hotspot);
+        }
+      };
+
+      marker.on('click', handleHotspotClick);
+      circle.on('click', handleHotspotClick);
+
+      layer.addLayer(circle);
+      layer.addLayer(marker);
+    });
+  }, [hotspots, selectedHotspot, onSelectHotspot, showHotspots, activeLayerMode]);
+
+  /**
+   * Pan/Zoom when selectedHotspot changes
+   */
+  useEffect(() => {
+    if (!selectedHotspot || !mapInstanceRef.current) return;
+    try {
+      mapInstanceRef.current.setView(
+        [selectedHotspot.latitude, selectedHotspot.longitude],
+        15,
+        { animate: true }
+      );
+    } catch {
+      // ignore
+    }
+  }, [selectedHotspot]);
 
   /**
    * Reset / Recenter Map View
    */
   const handleRecenter = () => {
     if (!mapInstanceRef.current) return;
-    if (leafletSelected) {
+    if (selectedHotspot) {
+      mapInstanceRef.current.setView([selectedHotspot.latitude, selectedHotspot.longitude], 15, { animate: true });
+    } else if (leafletSelected) {
       mapInstanceRef.current.setView(leafletSelected, 15, { animate: true });
     } else if (center) {
       mapInstanceRef.current.setView(center, zoom, { animate: true });
@@ -331,11 +447,52 @@ export default function CivicMap({
 
       {/* Top Controls Overlay */}
       {showControls && (
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 flex-wrap justify-end">
+          
+          {/* Layer Mode Switcher (All / Hotspots / Complaints) */}
+          {hotspots.length > 0 && (
+            <div className="flex items-center bg-white/95 backdrop-blur-xs border border-slate-200/80 rounded-lg p-0.5 shadow-xs text-[11px]">
+              <button
+                type="button"
+                onClick={() => setActiveLayerMode('all')}
+                className={`px-2 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                  activeLayerMode === 'all' 
+                    ? 'bg-slate-900 text-white shadow-2xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Layers
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveLayerMode('hotspots')}
+                className={`px-2 py-1 rounded-md font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                  activeLayerMode === 'hotspots' 
+                    ? 'bg-red-600 text-white shadow-2xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>🔥 Hotspots</span>
+                <span className="text-[10px] opacity-80">({hotspots.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveLayerMode('complaints')}
+                className={`px-2 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                  activeLayerMode === 'complaints' 
+                    ? 'bg-blue-600 text-white shadow-2xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Pins ({complaints.length})
+              </button>
+            </div>
+          )}
+
           {/* Tile Provider Badge */}
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 backdrop-blur-xs border border-slate-200/80 text-[10px] font-semibold text-slate-700 shadow-xs">
             <Layers className="w-3 h-3 text-blue-600" />
-            <span>{mapProvider === 'geoapify' ? 'Geoapify Vector GIS' : 'OpenStreetMap'}</span>
+            <span>{mapProvider === 'geoapify' ? 'Geoapify GIS' : 'OpenStreetMap'}</span>
           </div>
 
           {/* Recenter Button */}
@@ -364,7 +521,7 @@ export default function CivicMap({
           <div className="bg-white/95 backdrop-blur-xs rounded-lg border border-slate-200/90 shadow-sm text-[11px] p-2 transition-all">
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold text-slate-800 text-[10px] uppercase tracking-wider flex items-center gap-1">
-                <span>Severity Index</span>
+                <span>GIS Legend</span>
               </span>
               <button
                 type="button"
@@ -377,6 +534,14 @@ export default function CivicMap({
 
             {!legendCollapsed && (
               <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                {/* Hotspot indicator if hotspots are shown */}
+                {hotspots.length > 0 && (
+                  <div className="flex items-center gap-1 text-red-700 font-bold text-[10px]">
+                    <span>🔥</span>
+                    <span>Hotspot (Score 0-100)</span>
+                  </div>
+                )}
+                
                 {Object.entries(SEVERITY_CONFIG).filter(([k]) => k !== 'DEFAULT').map(([key, item]) => (
                   <div key={key} className="flex items-center gap-1 text-slate-600 font-medium text-[10px]">
                     <span 

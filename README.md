@@ -1,6 +1,5 @@
 # CivicAI 🏛️🤖
 ### AI-Powered Citizen Infrastructure & Municipal Governance Platform
-**Built for the "AI for Digital Public Infrastructure & Governance" Challenge**
 
 CivicAI empowers citizens to report civic infrastructure issues (potholes, streetlights, broken water pipelines, overflowing garbage, drainage blocks, public transit issues) and equips municipal authorities with an AI-driven mission control center for automated complaint triage, priority assessment, duplicate detection, and actionable resolution roadmaps.
 

@@ -248,6 +248,79 @@ export const createSeverityMarkerIcon = (severity, isSelected = false) => {
 };
 
 /**
+ * Create custom Hotspot GIS Marker Icon
+ * Distinct from individual complaint markers: uses radar ring, flame icon, and priority score
+ */
+export const createHotspotMarkerIcon = (hotspot, isSelected = false) => {
+  const score = hotspot.priorityScore || 0;
+  const count = hotspot.complaintCount || 2;
+
+  // Determine color scheme based on priorityScore
+  let color = '#ef4444'; // Red (High hazard)
+  let glowColor = 'rgba(239, 68, 68, 0.4)';
+  let bgGradient = 'linear-gradient(135deg, #ef4444, #b91c1c)';
+
+  if (score < 45) {
+    color = '#3b82f6';
+    glowColor = 'rgba(59, 130, 246, 0.4)';
+    bgGradient = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
+  } else if (score < 70) {
+    color = '#f97316';
+    glowColor = 'rgba(249, 115, 22, 0.4)';
+    bgGradient = 'linear-gradient(135deg, #f97316, #c2410c)';
+  }
+
+  const size = isSelected ? 48 : 42;
+  const anchor = size / 2;
+
+  return L.divIcon({
+    className: 'civic-hotspot-marker',
+    html: `
+      <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; items-center; justify-content: center;">
+        <!-- Pulsing Radar Ring -->
+        <div style="
+          position: absolute;
+          inset: -4px;
+          border-radius: 9999px;
+          border: 2px solid ${color};
+          animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+          opacity: 0.6;
+        "></div>
+        
+        <!-- Outer Glowing Circle -->
+        <div style="
+          width: 100%;
+          height: 100%;
+          border-radius: 9999px;
+          background: ${bgGradient};
+          box-shadow: 0 4px 14px ${glowColor}, 0 0 0 2px #ffffff;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          font-family: ui-sans-serif, system-ui, sans-serif;
+          cursor: pointer;
+          transform: ${isSelected ? 'scale(1.15)' : 'scale(1)'};
+          transition: transform 0.2s ease;
+        ">
+          <div style="display: flex; align-items: center; gap: 2px; font-weight: 800; font-size: 11px; line-height: 1;">
+            <span>🔥</span>
+            <span>${count}</span>
+          </div>
+          <div style="font-size: 8px; font-weight: 700; opacity: 0.95; letter-spacing: -0.2px; line-height: 1; margin-top: 1px;">
+            ${score}pt
+          </div>
+        </div>
+      </div>
+    `,
+    iconSize: [size, size],
+    iconAnchor: [anchor, anchor],
+    popupAnchor: [0, -anchor - 4]
+  });
+};
+
+/**
  * Set up tile layer: uses Geoapify if VITE_GEOAPIFY_API_KEY is available;
  * seamlessly falls back to OpenStreetMap on missing key or load errors.
  */

@@ -27,6 +27,11 @@ export const complaintService = {
     return await api.get(`/complaints/${id}`);
   },
 
+  // Get similar/duplicate candidate complaints
+  async getSimilarComplaints(id, radius = 1000) {
+    return await api.get(`/complaints/${id}/similar?radius=${radius}`);
+  },
+
   // Citizen update complaint details
   async updateComplaint(id, updateData) {
     return await api.patch(`/complaints/${id}`, updateData);
@@ -49,6 +54,34 @@ export const complaintService = {
   // Admin: Update status and add audit note
   async updateComplaintStatus(id, status, note) {
     return await api.patch(`/admin/complaints/${id}/status`, { status, note });
+  },
+
+  // Admin Analytics Endpoints
+  async getAdminAnalyticsOverview() {
+    return await api.get('/admin/analytics/overview');
+  },
+
+  async getAdminAnalyticsCategories() {
+    return await api.get('/admin/analytics/categories');
+  },
+
+  async getAdminAnalyticsSeverity() {
+    return await api.get('/admin/analytics/severity');
+  },
+
+  async getAdminAnalyticsTrends(days = 30) {
+    return await api.get(`/admin/analytics/trends?days=${days}`);
+  },
+
+  // Admin Geographic Hotspots Endpoint
+  async getAdminHotspots(params = {}) {
+    const query = new URLSearchParams();
+    if (params.radius) query.append('radius', params.radius);
+    if (params.minComplaints) query.append('minComplaints', params.minComplaints);
+    if (params.category && params.category !== 'ALL') query.append('category', params.category);
+    if (params.status && params.status !== 'ALL') query.append('status', params.status);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return await api.get(`/admin/hotspots${qs}`);
   }
 };
 

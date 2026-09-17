@@ -7,7 +7,11 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test-workflow.mjs"
+    "test": "node test-workflow.mjs",
+    "test:gemini": "node test-gemini.mjs",
+    "test:similar": "node test-similar.mjs",
+    "test:analytics": "node test-analytics.mjs",
+    "test:hotspots": "node test-hotspots.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",

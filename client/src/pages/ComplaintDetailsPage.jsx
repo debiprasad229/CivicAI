@@ -3,24 +3,17 @@ import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   MapPin, 
-  Calendar, 
-  User, 
-  Phone, 
-  Mail, 
-  Building, 
-  Sparkles, 
-  CheckCircle2, 
-  Clock, 
-  AlertTriangle, 
   Check, 
-  Printer,
-  Loader2,
-  ShieldAlert
+  Printer, 
+  Loader2, 
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 import complaintService from '../services/complaintService';
 import { getComplaintById as getMockComplaintById } from '../utils/mockData';
 import { StatusBadge, SeverityBadge, CategoryBadge, DuplicateBadge } from '../components/common/Badge';
 import AITriageCard from '../components/common/AITriageCard';
+import SimilarComplaintsCard from '../components/complaints/SimilarComplaintsCard';
 import MapContainer from '../components/common/MapContainer';
 
 export default function ComplaintDetailsPage() {
@@ -28,6 +21,8 @@ export default function ComplaintDetailsPage() {
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [similarData, setSimilarData] = useState(null);
+  const [similarLoading, setSimilarLoading] = useState(false);
 
   useEffect(() => {
     const loadComplaint = async () => {
@@ -39,6 +34,20 @@ export default function ComplaintDetailsPage() {
         if (res && res.complaint) {
           setComplaint(res.complaint);
           setLoading(false);
+
+          // Fetch similar complaints in background
+          try {
+            setSimilarLoading(true);
+            const simRes = await complaintService.getSimilarComplaints(id);
+            if (simRes && simRes.success) {
+              setSimilarData(simRes);
+            }
+          } catch (simErr) {
+            console.warn(`[ComplaintDetails] Similar complaints fetch: ${simErr.message}`);
+          } finally {
+            setSimilarLoading(false);
+          }
+
           return;
         }
       } catch (err) {
@@ -192,14 +201,10 @@ export default function ComplaintDetailsPage() {
       {/* Grid: AI Analysis Card & GIS Map */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gemini AI Triage Card */}
-        <AITriageCard aiAnalysis={complaint.aiAnalysis || {
-          urgencyScore: complaint.severity === 'CRITICAL' ? 95 : complaint.severity === 'HIGH' ? 75 : complaint.severity === 'MEDIUM' ? 50 : 25,
-          severity: complaint.severity,
-          recommendedDepartment: complaint.category ? `${complaint.category.replace('_', ' ')} Dept` : 'Public Works Department',
-          safetyRiskAssessment: complaint.aiSummary || 'Civic infrastructure report filed and awaiting municipal AI classification.',
-          actionableRecommendations: complaint.recommendedAction ? [complaint.recommendedAction] : ['Inspect reported municipal site', 'Verify citizen coordinates on ground'],
-          affectedGroups: complaint.affectedGroup ? [complaint.affectedGroup] : ['Local Residents']
-        }} />
+        <AITriageCard 
+          complaint={complaint} 
+          aiAnalysis={complaint.aiAnalysis} 
+        />
 
         {/* GIS Location & Geo-Coordinates */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
@@ -236,6 +241,12 @@ export default function ComplaintDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Geospatial Duplicate & Proximity Detection Card */}
+      <SimilarComplaintsCard 
+        similarData={similarData} 
+        loading={similarLoading} 
+      />
 
       {/* Audit Log Timeline */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
