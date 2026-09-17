@@ -1,29 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  Building2, 
-  MapPin, 
   Upload, 
   Sparkles, 
-  AlertTriangle, 
-  CheckCircle2, 
   ArrowRight, 
-  Info,
-  Construction,
-  Droplets,
-  Trash2,
-  Lightbulb,
-  Bus,
-  Waves,
-  Zap,
-  HelpCircle,
-  Crosshair,
-  Loader2,
-  AlertCircle,
+  Loader2, 
+  AlertCircle, 
   Users
 } from 'lucide-react';
 import complaintService, { COMPLAINT_CATEGORIES } from '../services/complaintService';
-import MapContainer from '../components/common/MapContainer';
+import LocationPicker from '../components/maps/LocationPicker';
 
 export default function SubmitComplaintPage() {
   const navigate = useNavigate();
@@ -35,7 +21,7 @@ export default function SubmitComplaintPage() {
     address: 'Near Cross Road 3, Civil Lines, Ward 14',
     affectedGroup: 'Pedestrians, Local Commuters',
     severity: 'MEDIUM',
-    coordinates: { lat: 28.6139, lng: 77.2090 }
+    coordinates: [77.2090, 28.6139] // standard GeoJSON [longitude, latitude]
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,11 +59,10 @@ export default function SubmitComplaintPage() {
 
   const aiPreview = getPreTriageInsights();
 
-  const handleMapLocationSelect = (coords) => {
+  const handleMapLocationSelect = (geoJsonCoords) => {
     setFormData(prev => ({
       ...prev,
-      coordinates: coords,
-      address: `Selected Point (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}) - Ward 14`
+      coordinates: geoJsonCoords
     }));
   };
 
@@ -90,13 +75,18 @@ export default function SubmitComplaintPage() {
       return;
     }
 
+    if (!formData.coordinates || !Array.isArray(formData.coordinates) || formData.coordinates.length < 2) {
+      setErrorMessage('Please select a valid location pin on the map.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       // Format GeoJSON coordinates: [longitude, latitude]
       const geoJsonLocation = {
         type: 'Point',
-        coordinates: [Number(formData.coordinates.lng), Number(formData.coordinates.lat)]
+        coordinates: [Number(formData.coordinates[0]), Number(formData.coordinates[1])]
       };
 
       const groups = formData.affectedGroup
@@ -279,16 +269,6 @@ export default function SubmitComplaintPage() {
 
         {/* Location & Map Picker */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              3. Location & GPS Coordinates *
-            </label>
-            <span className="text-[11px] text-blue-600 flex items-center gap-1 font-medium">
-              <Crosshair className="w-3.5 h-3.5" />
-              Click on map to adjust pin
-            </span>
-          </div>
-
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Street Address / Landmark *
@@ -296,28 +276,20 @@ export default function SubmitComplaintPage() {
             <input
               type="text"
               required
+              placeholder="e.g. Near Cross Road 3, Civil Lines, Ward 14"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600"
             />
           </div>
 
-          {/* Interactive Map Picker */}
-          <div>
-            <MapContainer
-              complaints={[{
-                id: 'NEW-PIN',
-                title: formData.title || 'Selected Issue Location',
-                category: formData.category,
-                location: { coordinates: formData.coordinates, address: formData.address },
-                aiAnalysis: { severity: aiPreview?.severity || 'MEDIUM' }
-              }]}
-              center={[formData.coordinates.lat, formData.coordinates.lng]}
-              zoom={14}
-              height="260px"
-              onLocationSelect={handleMapLocationSelect}
-            />
-          </div>
+          {/* Interactive Geoapify / Leaflet Location Picker */}
+          <LocationPicker
+            value={formData.coordinates}
+            onChange={handleMapLocationSelect}
+            height="290px"
+            required
+          />
         </div>
 
         {/* Submit Actions */}

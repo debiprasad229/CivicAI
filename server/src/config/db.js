@@ -1,4 +1,10 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Fix for Windows DNS resolvers failing on MongoDB Atlas SRV records
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {}
 
 // Global Mongoose connection caching for serverless environments
 let cached = global.mongoose;

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @layer base {
   body {
@@ -25,10 +26,126 @@
   background: #94a3b8;
 }
 
-/* Leaflet map container */
+/* Leaflet map container & layout fixes */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 10;
   border-radius: inherit;
+  font-family: inherit;
+  outline: none;
+}
+
+/* Ensure controls don't exceed parent stacking context */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 20 !important;
+}
+
+/* Custom modern popup styling */
+.civic-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.civic-leaflet-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1.4;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.civic-leaflet-popup .leaflet-popup-tip {
+  background: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.08);
+}
+
+.civic-leaflet-popup .leaflet-popup-close-button {
+  top: 10px !important;
+  right: 10px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.civic-leaflet-popup .leaflet-popup-close-button:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Marker pulse animations */
+@keyframes marker-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px rgba(37, 99, 235, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+@keyframes critical-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 16px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-marker-pulse {
+  animation: marker-pulse 2s infinite ease-in-out;
+}
+
+.animate-critical-pulse {
+  animation: critical-pulse 1.8s infinite ease-in-out;
+}
+
+/* Custom zoom control buttons */
+.leaflet-bar {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  transition: background-color 0.15s ease;
+}
+
+.leaflet-bar a:hover {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
 }
