@@ -17,28 +17,87 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
+import { authLimiter, aiLimiter, apiLimiter } from './middleware/rateLimiter.js';
+import { sanitizeError } from './services/gemini.service.js';
+
 const app = express();
 
+// Standard OWASP Security Headers (defense-in-depth)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 // Configure CORS
-const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
+const rawClientUrls = process.env.CLIENT_URL || '';
+const configuredOrigins = rawClientUrls
+  .split(',')
+  .map((url) => url.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const devOrigins = [
+  'http://localhost:5173',
   'http://localhost:3000',
-  'http://127.0.0.1:5173'
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
 ];
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+// In production, strictly allow configured origins; in development, also allow local dev ports
+const allowedOrigins = isProduction
+  ? configuredOrigins
+  : [...new Set([...configuredOrigins, ...devOrigins])];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Permissive in dev/hackathon context, customizable in prod
+    // Allow server-to-server, health check, curl, or mobile requests with no browser origin
+    if (!origin) {
+      return callback(null, true);
     }
+
+    const cleanOrigin = origin.trim().replace(/\/+$/, '');
+
+    // 1. Direct match with configured origins
+    if (allowedOrigins.includes(cleanOrigin)) {
+      return callback(null, true);
+    }
+
+    // 2. Allow Vercel preview/branch deployments if CLIENT_URL has a vercel.app domain
+    const hasVercelClient = configuredOrigins.some((url) => url.includes('.vercel.app'));
+    if (hasVercelClient) {
+      try {
+        const parsedUrl = new URL(cleanOrigin);
+        if (parsedUrl.hostname.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+      } catch (e) {
+        // invalid origin url format, ignore
+      }
+    }
+
+    // 3. In non-production, be permissive for local development tools
+    if (!isProduction) {
+      return callback(null, true);
+    }
+
+    // 4. Strictly reject unknown origins in production
+    console.warn(`[CORS Blocked] Origin "${cleanOrigin}" not authorized. Configured origins:`, configuredOrigins);
+    return callback(new Error('CORS policy: Access from this origin is not allowed.'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Apply global API rate limiter
+app.use('/api', apiLimiter);
+
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Health check endpoint reporting server & DB status
 app.get('/api/health', (req, res) => {
@@ -60,13 +119,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
+// Routes with specialized rate limiters
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/admin/complaints', adminComplaintRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/hotspots', hotspotRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/ai', aiLimiter, aiRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -76,12 +135,13 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
+// Global error handler with secret sanitization
 app.use((err, req, res, next) => {
-  console.error('[Error]', err.stack || err.message);
+  const safeMessage = sanitizeError(err.message || 'Internal Server Error');
+  console.error('[Error]', safeMessage);
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal Server Error'
+    message: safeMessage
   });
 });
 

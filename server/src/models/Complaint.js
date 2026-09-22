@@ -39,6 +39,10 @@ const complaintSchema = new mongoose.Schema(
       required: [true, 'Please provide a detailed description'],
       trim: true
     },
+    originalDescription: {
+      type: String,
+      trim: true
+    },
     category: {
       type: String,
       required: [true, 'Please specify an infrastructure category'],
@@ -83,6 +87,11 @@ const complaintSchema = new mongoose.Schema(
     aiSummary: {
       type: String,
       default: ''
+    },
+    isDemo: {
+      type: Boolean,
+      default: false,
+      index: true
     },
     aiAnalysis: {
       status: { 
@@ -150,10 +159,25 @@ const complaintSchema = new mongoose.Schema(
   }
 );
 
+// Ensure originalDescription is preserved before saving
+complaintSchema.pre('save', function (next) {
+  if (!this.originalDescription && this.description) {
+    this.originalDescription = this.description;
+  }
+  next();
+});
+
 // 2dsphere index for geospatial queries
 complaintSchema.index({ location: '2dsphere' });
+// Compound index for category + 2dsphere proximity search (duplicate detection)
+complaintSchema.index({ category: 1, location: '2dsphere' });
 // Index for citizen lookup
 complaintSchema.index({ createdBy: 1, createdAt: -1 });
+// Compound indexes for admin queries, status filtering, and analytics
+complaintSchema.index({ status: 1, createdAt: -1 });
+complaintSchema.index({ category: 1, status: 1 });
+complaintSchema.index({ severity: 1, status: 1 });
+complaintSchema.index({ createdAt: -1 });
 
 const Complaint = mongoose.models.Complaint || mongoose.model('Complaint', complaintSchema);
 

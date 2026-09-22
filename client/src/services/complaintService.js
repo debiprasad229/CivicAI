@@ -82,6 +82,14 @@ export const complaintService = {
     if (params.status && params.status !== 'ALL') query.append('status', params.status);
     const qs = query.toString() ? `?${query.toString()}` : '';
     return await api.get(`/admin/hotspots${qs}`);
+  },
+
+  // AI-Powered Hotspot Infrastructure Recommendation
+  async getHotspotRecommendation(hotspotId, hotspotData = null, refresh = false) {
+    const endpoint = hotspotId
+      ? `/admin/hotspots/${hotspotId}/recommendation${refresh ? '?refresh=true' : ''}`
+      : `/admin/hotspots/recommendation${refresh ? '?refresh=true' : ''}`;
+    return await api.post(endpoint, { hotspot: hotspotData, hotspotId, refresh });
   }
 };
 

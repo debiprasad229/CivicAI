@@ -155,11 +155,17 @@ export const formatCoords = (coords, precision = 4) => {
   return `${Math.abs(lat).toFixed(precision)}° ${latDir}, ${Math.abs(lng).toFixed(precision)}° ${lngDir}`;
 };
 
+// Static Icon Caches to prevent thousands of DOM/Icon re-allocations on render
+const severityIconCache = new Map();
+let cachedSelectedLocationIcon = null;
+
 /**
  * Create custom SVG marker for selected complaint location
  */
 export const createSelectedLocationIcon = () => {
-  return L.divIcon({
+  if (cachedSelectedLocationIcon) return cachedSelectedLocationIcon;
+
+  cachedSelectedLocationIcon = L.divIcon({
     className: 'custom-selected-pin-container',
     html: `
       <div style="position: relative; width: 36px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
@@ -192,14 +198,23 @@ export const createSelectedLocationIcon = () => {
     iconAnchor: [18, 42],
     popupAnchor: [0, -42]
   });
+
+  return cachedSelectedLocationIcon;
 };
 
 /**
  * Create custom SVG marker for existing complaints differentiated by severity
  */
 export const createSeverityMarkerIcon = (severity, isSelected = false) => {
-  const conf = getSeverityConfig(severity);
-  const isCritical = String(severity).toUpperCase() === 'CRITICAL';
+  const normSeverity = String(severity || 'MEDIUM').toUpperCase().trim();
+  const cacheKey = `${normSeverity}:${isSelected ? 'selected' : 'default'}`;
+
+  if (severityIconCache.has(cacheKey)) {
+    return severityIconCache.get(cacheKey);
+  }
+
+  const conf = getSeverityConfig(normSeverity);
+  const isCritical = normSeverity === 'CRITICAL';
   const size = isSelected ? 32 : (isCritical ? 28 : 24);
   const anchor = size / 2;
 
@@ -213,7 +228,7 @@ export const createSeverityMarkerIcon = (severity, isSelected = false) => {
       "></div>`
     : '';
 
-  return L.divIcon({
+  const icon = L.divIcon({
     className: `civic-severity-marker ${isSelected ? 'is-selected' : ''}`,
     html: `
       <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
@@ -245,7 +260,12 @@ export const createSeverityMarkerIcon = (severity, isSelected = false) => {
     iconAnchor: [anchor, anchor],
     popupAnchor: [0, -anchor]
   });
+
+  severityIconCache.set(cacheKey, icon);
+  return icon;
 };
+
+const hotspotIconCache = new Map();
 
 /**
  * Create custom Hotspot GIS Marker Icon
@@ -254,6 +274,11 @@ export const createSeverityMarkerIcon = (severity, isSelected = false) => {
 export const createHotspotMarkerIcon = (hotspot, isSelected = false) => {
   const score = hotspot.priorityScore || 0;
   const count = hotspot.complaintCount || 2;
+  const cacheKey = `${score}:${count}:${isSelected ? 'selected' : 'default'}`;
+
+  if (hotspotIconCache.has(cacheKey)) {
+    return hotspotIconCache.get(cacheKey);
+  }
 
   // Determine color scheme based on priorityScore
   let color = '#ef4444'; // Red (High hazard)
@@ -273,7 +298,7 @@ export const createHotspotMarkerIcon = (hotspot, isSelected = false) => {
   const size = isSelected ? 48 : 42;
   const anchor = size / 2;
 
-  return L.divIcon({
+  const icon = L.divIcon({
     className: 'civic-hotspot-marker',
     html: `
       <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; items-center; justify-content: center;">
@@ -318,6 +343,9 @@ export const createHotspotMarkerIcon = (hotspot, isSelected = false) => {
     iconAnchor: [anchor, anchor],
     popupAnchor: [0, -anchor - 4]
   });
+
+  hotspotIconCache.set(cacheKey, icon);
+  return icon;
 };
 
 /**
@@ -377,4 +405,17 @@ export const setupTileLayer = (map, options = {}) => {
 
   activeLayer.addTo(map);
   return { layer: activeLayer, provider };
+};
+
+/**
+ * HTML entity escaping helper to prevent XSS in Leaflet HTML popups
+ */
+export const escapeHtml = (str) => {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 };

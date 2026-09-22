@@ -20,7 +20,13 @@ export const protect = async (req, res, next) => {
   }
 
   try {
-    const secret = process.env.JWT_SECRET || 'civicai_jwt_dev_secret_key_change_in_prod';
+    const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'civicai_jwt_dev_secret_key_change_in_prod');
+    if (!secret) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server authentication configuration error: JWT_SECRET required in production.'
+      });
+    }
     const decoded = jwt.verify(token, secret);
 
     req.user = await User.findById(decoded.id).select('-password');

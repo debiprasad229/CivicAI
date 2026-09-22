@@ -26,6 +26,12 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 app.listen(PORT, () => {
-  console.log(`[CivicAI Server] Running on http://localhost:${PORT}`);
-  console.log(`[CivicAI Server] Health check available at http://localhost:${PORT}/api/health`);
+  const isProduction = process.env.NODE_ENV === 'production';
+  console.log(`[CivicAI Server] Listening on port ${PORT} [env: ${process.env.NODE_ENV || 'development'}]`);
+  if (!isProduction) {
+    console.log(`[CivicAI Server] Local URL: http://localhost:${PORT}`);
+    console.log(`[CivicAI Server] Health check: http://localhost:${PORT}/api/health`);
+  } else {
+    console.log(`[CivicAI Server] Health check path: /api/health`);
+  }
 });

@@ -1,81 +1,113 @@
 import Complaint, { COMPLAINT_CATEGORIES, COMPLAINT_SEVERITIES } from '../models/Complaint.js';
 
+// High-speed In-Memory Cache for Admin Analytics (30s TTL)
+const analyticsCache = new Map();
+const ANALYTICS_CACHE_TTL = 30 * 1000; // 30 seconds
+
+// Export invalidation helper to clear cache on new complaint or status update
+export const clearAnalyticsCache = () => {
+  analyticsCache.clear();
+};
+global.clearAnalyticsCache = clearAnalyticsCache;
+
 /**
  * GET /api/admin/analytics/overview
  * Overview metrics:
- * - total
- * - submitted
- * - under review
- * - in progress
- * - resolved
- * - high/critical
- * - by category
- * - by severity
- * - top areas
+ * Consolidated via a single high-performance $facet aggregation pipeline.
  */
 export const getOverview = async (req, res) => {
   try {
-    const [totalCount, statusAgg, severityAgg, categoryAgg, topAreasAgg] = await Promise.all([
-      Complaint.countDocuments(),
-      Complaint.aggregate([
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 }
-          }
-        }
-      ]),
-      Complaint.aggregate([
-        {
-          $group: {
-            _id: '$severity',
-            count: { $sum: 1 }
-          }
-        }
-      ]),
-      Complaint.aggregate([
-        {
-          $group: {
-            _id: '$category',
-            count: { $sum: 1 }
-          }
-        }
-      ]),
-      Complaint.aggregate([
-        {
-          $match: {
-            address: { $exists: true, $ne: '' }
-          }
-        },
-        {
-          $group: {
-            _id: '$address',
-            count: { $sum: 1 },
-            criticalCount: {
-              $sum: {
-                $cond: [{ $in: ['$severity', ['HIGH', 'CRITICAL']] }, 1, 0]
-              }
-            },
-            resolvedCount: {
-              $sum: {
-                $cond: [{ $eq: ['$status', 'RESOLVED'] }, 1, 0]
+    const cacheKey = 'analytics:overview';
+    if (analyticsCache.has(cacheKey)) {
+      const cached = analyticsCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL) {
+        return res.status(200).json(cached.data);
+      }
+      analyticsCache.delete(cacheKey);
+    }
+
+    // Consolidated single-pass $facet aggregation
+    const [facetResults] = await Complaint.aggregate([
+      {
+        $facet: {
+          totalCount: [{ $count: 'count' }],
+          statusAgg: [
+            {
+              $group: {
+                _id: '$status',
+                count: { $sum: 1 }
               }
             }
-          }
-        },
-        { $sort: { count: -1 } },
-        { $limit: 10 },
-        {
-          $project: {
-            _id: 0,
-            area: '$_id',
-            count: 1,
-            criticalCount: 1,
-            resolvedCount: 1
-          }
+          ],
+          severityAgg: [
+            {
+              $group: {
+                _id: '$severity',
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          categoryAgg: [
+            {
+              $group: {
+                _id: '$category',
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          highCriticalUnresolved: [
+            {
+              $match: {
+                severity: { $in: ['HIGH', 'CRITICAL'] },
+                status: { $ne: 'RESOLVED' }
+              }
+            },
+            { $count: 'count' }
+          ],
+          topAreasAgg: [
+            {
+              $match: {
+                address: { $exists: true, $ne: '' }
+              }
+            },
+            {
+              $group: {
+                _id: '$address',
+                count: { $sum: 1 },
+                criticalCount: {
+                  $sum: {
+                    $cond: [{ $in: ['$severity', ['HIGH', 'CRITICAL']] }, 1, 0]
+                  }
+                },
+                resolvedCount: {
+                  $sum: {
+                    $cond: [{ $eq: ['$status', 'RESOLVED'] }, 1, 0]
+                  }
+                }
+              }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            {
+              $project: {
+                _id: 0,
+                area: '$_id',
+                count: 1,
+                criticalCount: 1,
+                resolvedCount: 1
+              }
+            }
+          ]
         }
-      ])
+      }
     ]);
+
+    const totalCount = facetResults?.totalCount?.[0]?.count || 0;
+    const statusAgg = facetResults?.statusAgg || [];
+    const severityAgg = facetResults?.severityAgg || [];
+    const categoryAgg = facetResults?.categoryAgg || [];
+    const topAreasAgg = facetResults?.topAreasAgg || [];
+    const highCriticalUnresolved = facetResults?.highCriticalUnresolved?.[0]?.count || 0;
 
     // Map status breakdown
     const statusMap = {
@@ -113,12 +145,6 @@ export const getOverview = async (req, res) => {
 
     const highCritical = severityMap.HIGH + severityMap.CRITICAL;
 
-    // High / critical unresolved count
-    const highCriticalUnresolved = await Complaint.countDocuments({
-      severity: { $in: ['HIGH', 'CRITICAL'] },
-      status: { $ne: 'RESOLVED' }
-    });
-
     // Map category breakdown
     const categoryMap = {};
     COMPLAINT_CATEGORIES.forEach(cat => {
@@ -134,7 +160,7 @@ export const getOverview = async (req, res) => {
       ? Math.round((resolved / totalCount) * 100) 
       : 0;
 
-    res.status(200).json({
+    const responsePayload = {
       success: true,
       data: {
         total: totalCount,
@@ -152,7 +178,14 @@ export const getOverview = async (req, res) => {
         byCategory: categoryMap,
         topAreas: topAreasAgg
       }
+    };
+
+    analyticsCache.set(cacheKey, {
+      data: responsePayload,
+      timestamp: Date.now()
     });
+
+    res.status(200).json(responsePayload);
   } catch (error) {
     console.error('Failed to generate admin analytics overview:', error);
     res.status(500).json({
@@ -169,6 +202,15 @@ export const getOverview = async (req, res) => {
  */
 export const getCategories = async (req, res) => {
   try {
+    const cacheKey = 'analytics:categories';
+    if (analyticsCache.has(cacheKey)) {
+      const cached = analyticsCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL) {
+        return res.status(200).json(cached.data);
+      }
+      analyticsCache.delete(cacheKey);
+    }
+
     const totalCount = await Complaint.countDocuments();
     const categoryStats = await Complaint.aggregate([
       {
@@ -211,13 +253,20 @@ export const getCategories = async (req, res) => {
       };
     }).sort((a, b) => b.count - a.count);
 
-    res.status(200).json({
+    const responsePayload = {
       success: true,
       data: {
         total: totalCount,
         categories
       }
+    };
+
+    analyticsCache.set(cacheKey, {
+      data: responsePayload,
+      timestamp: Date.now()
     });
+
+    res.status(200).json(responsePayload);
   } catch (error) {
     console.error('Failed to generate category analytics:', error);
     res.status(500).json({
@@ -234,6 +283,15 @@ export const getCategories = async (req, res) => {
  */
 export const getSeverity = async (req, res) => {
   try {
+    const cacheKey = 'analytics:severity';
+    if (analyticsCache.has(cacheKey)) {
+      const cached = analyticsCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL) {
+        return res.status(200).json(cached.data);
+      }
+      analyticsCache.delete(cacheKey);
+    }
+
     const totalCount = await Complaint.countDocuments();
     const severityStats = await Complaint.aggregate([
       {
@@ -267,13 +325,20 @@ export const getSeverity = async (req, res) => {
       };
     });
 
-    res.status(200).json({
+    const responsePayload = {
       success: true,
       data: {
         total: totalCount,
         severities
       }
+    };
+
+    analyticsCache.set(cacheKey, {
+      data: responsePayload,
+      timestamp: Date.now()
     });
+
+    res.status(200).json(responsePayload);
   } catch (error) {
     console.error('Failed to generate severity analytics:', error);
     res.status(500).json({
@@ -291,6 +356,15 @@ export const getSeverity = async (req, res) => {
 export const getTrends = async (req, res) => {
   try {
     const days = parseInt(req.query.days, 10) || 30;
+    const cacheKey = `analytics:trends:${days}`;
+    if (analyticsCache.has(cacheKey)) {
+      const cached = analyticsCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL) {
+        return res.status(200).json(cached.data);
+      }
+      analyticsCache.delete(cacheKey);
+    }
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - (days - 1));
     startDate.setHours(0, 0, 0, 0);
@@ -352,14 +426,21 @@ export const getTrends = async (req, res) => {
       }
     }
 
-    res.status(200).json({
+    const responsePayload = {
       success: true,
       data: {
         days,
         startDate: startDate.toISOString().split('T')[0],
         trends: filledTrends
       }
+    };
+
+    analyticsCache.set(cacheKey, {
+      data: responsePayload,
+      timestamp: Date.now()
     });
+
+    res.status(200).json(responsePayload);
   } catch (error) {
     console.error('Failed to generate trend analytics:', error);
     res.status(500).json({

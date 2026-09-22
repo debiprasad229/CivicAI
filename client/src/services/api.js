@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-// Create central Axios client
-// In Vercel production: defaults to relative '/api' (same-origin, zero CORS)
-// In local dev: Vite proxy forwards '/api' to 'http://localhost:5000'
+const rawApiUrl = import.meta.env.VITE_API_URL;
+// In production: points to Render backend (e.g., https://civicai-api.onrender.com/api)
+// In local dev: defaults to '/api' which Vite proxies to http://localhost:5000
+const baseURL = rawApiUrl ? rawApiUrl.trim().replace(/\/+$/, '') : '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json'
   }

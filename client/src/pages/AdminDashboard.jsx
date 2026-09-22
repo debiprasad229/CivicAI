@@ -17,7 +17,11 @@ import {
   Layers,
   Map as MapIcon,
   Eye,
-  X
+  X,
+  Sparkles,
+  Lightbulb,
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -80,6 +84,39 @@ export default function AdminDashboard() {
   const [hotspots, setHotspots] = useState([]);
   const [selectedHotspot, setSelectedHotspot] = useState(null);
   const [activeHotspotFilter, setActiveHotspotFilter] = useState(null);
+  const [hotspotRecommendations, setHotspotRecommendations] = useState({});
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
+  const [recommendationError, setRecommendationError] = useState(null);
+
+  // Fetch AI infrastructure recommendation for selected hotspot
+  const fetchHotspotRecommendation = useCallback(async (hotspot, forceRefresh = false) => {
+    if (!hotspot || !hotspot.id) return;
+    if (!forceRefresh && hotspotRecommendations[hotspot.id]) return;
+
+    setRecommendationLoading(true);
+    setRecommendationError(null);
+    try {
+      const res = await complaintService.getHotspotRecommendation(hotspot.id, hotspot, forceRefresh);
+      if (res?.data) {
+        setHotspotRecommendations((prev) => ({
+          ...prev,
+          [hotspot.id]: res.data
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch hotspot recommendation:', err);
+      setRecommendationError(err.response?.data?.message || err.message || 'Failed to fetch AI recommendation');
+    } finally {
+      setRecommendationLoading(false);
+    }
+  }, [hotspotRecommendations]);
+
+  // Automatically trigger AI recommendation when a hotspot is selected
+  useEffect(() => {
+    if (selectedHotspot) {
+      fetchHotspotRecommendation(selectedHotspot);
+    }
+  }, [selectedHotspot, fetchHotspotRecommendation]);
 
   // Map Filter States
   const [mapCategoryFilter, setMapCategoryFilter] = useState('ALL');
@@ -643,69 +680,179 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Selected Hotspot Statistics Inspector Banner below Map */}
+        {/* Selected Hotspot Statistics & AI Recommendation Inspector */}
         {selectedHotspot && (
-          <div className="p-4 bg-orange-50/80 border-t border-orange-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1.5 min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-orange-950 bg-orange-200/90 px-2 py-0.5 rounded flex items-center gap-1">
-                  <span>🔥</span>
-                  <span>Geographic Hotspot #{selectedHotspot.id}</span>
-                </span>
-                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-red-100 text-red-800 border border-red-200">
-                  Priority Score: {selectedHotspot.priorityScore}/100
-                </span>
-                <span className="text-xs font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
-                  {selectedHotspot.complaintCount} Complaints
-                </span>
-                <span className="text-xs font-semibold text-red-700 bg-white px-2 py-0.5 rounded border border-slate-200">
-                  {selectedHotspot.highPriorityCount} High/Critical
-                </span>
+          <div className="border-t border-orange-200 bg-orange-50/70">
+            {/* Hotspot Statistics Bar */}
+            <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-orange-200/60">
+              <div className="space-y-1.5 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-orange-950 bg-orange-200/90 px-2 py-0.5 rounded flex items-center gap-1">
+                    <span>🔥</span>
+                    <span>Geographic Hotspot #{selectedHotspot.id}</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[11px] font-black bg-red-100 text-red-800 border border-red-200">
+                    Priority Score: {selectedHotspot.priorityScore}/100
+                  </span>
+                  <span className="text-xs font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                    {selectedHotspot.complaintCount} Complaints
+                  </span>
+                  <span className="text-xs font-semibold text-red-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                    {selectedHotspot.highPriorityCount} High/Critical
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                  <div>
+                    <span className="text-slate-400">Dominant Sector: </span>
+                    <span className="font-bold text-slate-900">{selectedHotspot.dominantCategory}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Cluster Radius: </span>
+                    <span className="font-semibold text-slate-800">~{selectedHotspot.radiusMeters}m</span>
+                  </div>
+                  {selectedHotspot.addresses?.length > 0 && (
+                    <div className="truncate max-w-md">
+                      <span className="text-slate-400">Area: </span>
+                      <span className="font-medium text-slate-800">{selectedHotspot.addresses[0]}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                <div>
-                  <span className="text-slate-400">Dominant Sector: </span>
-                  <span className="font-bold text-slate-900">{selectedHotspot.dominantCategory}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400">Cluster Radius: </span>
-                  <span className="font-semibold text-slate-800">~{selectedHotspot.radiusMeters}m</span>
-                </div>
-                {selectedHotspot.addresses?.length > 0 && (
-                  <div className="truncate max-w-md">
-                    <span className="text-slate-400">Area: </span>
-                    <span className="font-medium text-slate-800">{selectedHotspot.addresses[0]}</span>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    if (activeHotspotFilter?.id === selectedHotspot.id) {
+                      setActiveHotspotFilter(null);
+                    } else {
+                      setActiveHotspotFilter(selectedHotspot);
+                    }
+                  }}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    activeHotspotFilter?.id === selectedHotspot.id
+                      ? 'bg-orange-600 text-white hover:bg-orange-700'
+                      : 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{activeHotspotFilter?.id === selectedHotspot.id ? '✓ Filtering Ledger' : 'Filter Ledger to Hotspot'}</span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedHotspot(null)}
+                  className="p-2 text-slate-500 hover:text-slate-700 text-xs rounded-lg border border-slate-200 bg-white cursor-pointer"
+                  title="Deselect Hotspot"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  if (activeHotspotFilter?.id === selectedHotspot.id) {
-                    setActiveHotspotFilter(null);
-                  } else {
-                    setActiveHotspotFilter(selectedHotspot);
-                  }
-                }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors ${
-                  activeHotspotFilter?.id === selectedHotspot.id
-                    ? 'bg-orange-600 text-white hover:bg-orange-700'
-                    : 'bg-white border border-slate-300 text-slate-800 hover:bg-slate-50'
-                }`}
-              >
-                <span>{activeHotspotFilter?.id === selectedHotspot.id ? '✓ Filtering Ledger' : 'Filter Ledger to Hotspot'}</span>
-              </button>
+            {/* AI Recommendation Section */}
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-white to-amber-50/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-gradient-to-tr from-amber-500 to-orange-500 text-white rounded-lg shadow-2xs">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      AI Recommendation
+                    </h4>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Based on available CivicAI complaint data
+                    </p>
+                  </div>
+                </div>
 
-              <button
-                onClick={() => setSelectedHotspot(null)}
-                className="p-2 text-slate-500 hover:text-slate-700 text-xs rounded-lg border border-slate-200 bg-white cursor-pointer"
-                title="Deselect Hotspot"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {hotspotRecommendations[selectedHotspot.id] && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider ${
+                      hotspotRecommendations[selectedHotspot.id].urgency === 'CRITICAL'
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : hotspotRecommendations[selectedHotspot.id].urgency === 'HIGH'
+                        ? 'bg-orange-100 text-orange-800 border-orange-200'
+                        : hotspotRecommendations[selectedHotspot.id].urgency === 'MEDIUM'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {hotspotRecommendations[selectedHotspot.id].urgency} Urgency
+                    </span>
+                  )}
+
+                  <button
+                    onClick={() => fetchHotspotRecommendation(selectedHotspot, true)}
+                    disabled={recommendationLoading}
+                    className="p-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1 shadow-2xs cursor-pointer"
+                    title="Regenerate AI Recommendation"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${recommendationLoading ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              {recommendationLoading && !hotspotRecommendations[selectedHotspot.id] ? (
+                <div className="py-6 flex flex-col items-center justify-center text-center space-y-2">
+                  <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+                  <p className="text-xs font-semibold text-slate-600">
+                    Synthesizing civic patterns & municipal intervention options with Gemini...
+                  </p>
+                </div>
+              ) : recommendationError && !hotspotRecommendations[selectedHotspot.id] ? (
+                <div className="p-3 my-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center justify-between">
+                  <span>{recommendationError}</span>
+                  <button
+                    onClick={() => fetchHotspotRecommendation(selectedHotspot, true)}
+                    className="font-bold underline cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : hotspotRecommendations[selectedHotspot.id] ? (
+                <div className="mt-3 space-y-3">
+                  {/* Recommended Intervention */}
+                  <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-1 flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                      Recommended Intervention
+                    </div>
+                    <div className="text-sm font-bold text-slate-900 leading-snug">
+                      {hotspotRecommendations[selectedHotspot.id].recommendedIntervention}
+                    </div>
+                  </div>
+
+                  {/* Reason and Expected Benefit Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Reasoning & Pattern
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {hotspotRecommendations[selectedHotspot.id].reason}
+                      </p>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Expected Civic Benefit
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {hotspotRecommendations[selectedHotspot.id].expectedBenefit}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mandatory Authority Disclaimer */}
+                  <div className="flex items-start gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600">
+                    <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-slate-700">Municipal Verification Notice: </span>
+                      {hotspotRecommendations[selectedHotspot.id].disclaimer || 'Recommendations are decision-support suggestions based on available CivicAI complaint data and require municipal authority verification before implementation.'}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         )}
@@ -1074,6 +1221,17 @@ export default function AdminDashboard() {
                         <div className="text-[11px] text-slate-600 line-clamp-1 flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{hotspot.addresses[0]}</span>
+                        </div>
+                      )}
+                      {hotspotRecommendations[hotspot.id] && (
+                        <div className="mt-1.5 p-2 bg-amber-50/80 border border-amber-200/70 rounded-lg">
+                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-amber-900">
+                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            <span>AI Recommendation</span>
+                          </div>
+                          <p className="text-xs text-slate-700 font-medium line-clamp-1 mt-0.5">
+                            {hotspotRecommendations[hotspot.id].recommendedIntervention}
+                          </p>
                         </div>
                       )}
                     </div>

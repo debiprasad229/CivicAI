@@ -1,5 +1,8 @@
 import http from 'http';
 import mongoose from 'mongoose';
+
+process.env.NODE_ENV = 'test';
+
 import app from './src/app.js';
 import User from './src/models/User.js';
 import Complaint from './src/models/Complaint.js';

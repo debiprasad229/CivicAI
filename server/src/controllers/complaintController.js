@@ -1,5 +1,5 @@
 import Complaint, { COMPLAINT_CATEGORIES, COMPLAINT_STATUSES, COMPLAINT_SEVERITIES } from '../models/Complaint.js';
-import geminiService, { sanitizeError } from '../services/gemini.service.js';
+import geminiService, { sanitizeError, getFallbackComplaintTriage } from '../services/gemini.service.js';
 
 // @desc    Submit a new infrastructure grievance
 // @route   POST /api/complaints
@@ -57,15 +57,38 @@ export const createComplaint = async (req, res) => {
       }
     ];
 
-    // 1. Save complaint immediately with PENDING AI status
-    const complaint = await Complaint.create({
+    // Detect initial language based on Unicode script if not specified
+    let initialLanguage = language || 'en';
+    const textScan = `${title} ${description}`;
+    if (/[\u0B00-\u0B7F]/.test(textScan)) {
+      initialLanguage = 'or';
+    } else if (/[\u0900-\u097F]/.test(textScan)) {
+      initialLanguage = 'hi';
+    }
+
+    // Compute immediate high-accuracy heuristic triage for instant demo feedback
+    const heuristicTriage = getFallbackComplaintTriage({
       title: title.trim(),
       description: description.trim(),
       category: normalizedCategory,
+      language: initialLanguage,
+      severity: validSeverity
+    });
+
+    // 1. Save complaint immediately with baseline triage & PENDING status
+    const complaint = await Complaint.create({
+      title: title.trim(),
+      description: description.trim(),
+      originalDescription: description.trim(),
+      category: normalizedCategory,
       severity: validSeverity,
       status: 'SUBMITTED',
-      language: language || 'en',
-      affectedGroup: Array.isArray(affectedGroup) ? affectedGroup : affectedGroup ? [affectedGroup] : [],
+      language: initialLanguage,
+      affectedGroup: Array.isArray(affectedGroup) && affectedGroup.length > 0 
+        ? affectedGroup 
+        : heuristicTriage.affectedGroup || ['General Public'],
+      recommendedAction: heuristicTriage.recommendedAction || ['Dispatch municipal inspection crew to assess location'],
+      aiSummary: heuristicTriage.summary || title.trim(),
       location: {
         type: 'Point',
         coordinates
@@ -74,72 +97,82 @@ export const createComplaint = async (req, res) => {
       createdBy: req.user._id,
       timeline: initialTimeline,
       aiAnalysis: {
-        status: 'PENDING'
+        status: 'PENDING',
+        urgencyScore: validSeverity === 'CRITICAL' ? 95 : validSeverity === 'HIGH' ? 75 : 50,
+        recommendedDepartment: `${normalizedCategory.replace(/_/g, ' ')} Public Works Bureau`,
+        reasoning: 'Initial triage assigned via deterministic heuristic engine; background AI verification active.'
       }
     });
 
-    // 2. Analyze with Gemini (if API key configured) & 3. Update complaint
-    try {
-      if (process.env.GEMINI_API_KEY?.trim()) {
-        const aiResult = await geminiService.analyzeComplaint({
-          title: complaint.title,
-          description: complaint.description,
-          language: complaint.language,
-          category: complaint.category,
-          address: complaint.address,
-          location: complaint.location
-        });
-
-        // Update complaint with structured AI triage results
-        complaint.severity = aiResult.severity || complaint.severity;
-        if (aiResult.category && COMPLAINT_CATEGORIES.includes(aiResult.category)) {
-          complaint.category = aiResult.category;
-        }
-        complaint.aiSummary = aiResult.summary || complaint.aiSummary;
-        if (Array.isArray(aiResult.affectedGroup) && aiResult.affectedGroup.length > 0 && complaint.affectedGroup.length === 0) {
-          complaint.affectedGroup = aiResult.affectedGroup;
-        }
-        if (Array.isArray(aiResult.recommendedAction) && aiResult.recommendedAction.length > 0) {
-          complaint.recommendedAction = aiResult.recommendedAction;
-        }
-
-        complaint.aiAnalysis = {
-          status: 'COMPLETED',
-          reasoning: aiResult.reasoning || '',
-          completedAt: new Date(),
-          rawResponse: aiResult
-        };
-
-        // Append audit timeline entry
-        complaint.timeline.push({
-          status: 'SUBMITTED',
-          note: `AI automated triage completed (Severity: ${complaint.severity}, Category: ${complaint.category})`,
-          updatedBy: req.user._id,
-          timestamp: new Date()
-        });
-
-        await complaint.save();
-      } else {
-        // If GEMINI_API_KEY is not set, complaint remains saved with PENDING status
-        console.log(`[ComplaintController] Complaint #${complaint._id} saved. AI analysis marked as PENDING (GEMINI_API_KEY not configured).`);
-      }
-    } catch (aiError) {
-      // If Gemini fails, complaint is still safely saved; mark AI analysis as pending/failed
-      const safeMessage = sanitizeError(aiError);
-      console.warn(`[ComplaintController] AI triage error for complaint #${complaint._id}: ${safeMessage}. Saved with status PENDING.`);
-      
-      complaint.aiAnalysis = {
-        status: 'PENDING',
-        error: safeMessage
-      };
-      await complaint.save().catch(() => {});
+    // Invalidate analytics and hotspot in-memory caches on new complaint
+    if (global.clearAnalyticsCache) {
+      global.clearAnalyticsCache();
     }
 
-    return res.status(201).json({
+    // 2. Respond immediately to user (<80ms) for snappy UX during live demo!
+    res.status(201).json({
       success: true,
       message: 'Complaint submitted successfully',
       complaint
     });
+
+    // 3. Asynchronously execute Gemini AI deep triage in background if API key configured
+    if (process.env.GEMINI_API_KEY?.trim()) {
+      setImmediate(async () => {
+        try {
+          const aiResult = await geminiService.analyzeComplaint({
+            title: complaint.title,
+            description: complaint.description,
+            language: complaint.language,
+            category: complaint.category,
+            address: complaint.address,
+            location: complaint.location
+          });
+
+          const toUpdate = {};
+          if (aiResult.severity) toUpdate.severity = aiResult.severity;
+          if (aiResult.category && COMPLAINT_CATEGORIES.includes(aiResult.category)) {
+            toUpdate.category = aiResult.category;
+          }
+          if (aiResult.language) toUpdate.language = aiResult.language;
+          if (aiResult.summary) toUpdate.aiSummary = aiResult.summary;
+          if (Array.isArray(aiResult.affectedGroup) && aiResult.affectedGroup.length > 0) {
+            toUpdate.affectedGroup = aiResult.affectedGroup;
+          }
+          if (Array.isArray(aiResult.recommendedAction) && aiResult.recommendedAction.length > 0) {
+            toUpdate.recommendedAction = aiResult.recommendedAction;
+          }
+
+          toUpdate.aiAnalysis = {
+            status: 'COMPLETED',
+            reasoning: aiResult.reasoning || '',
+            completedAt: new Date(),
+            rawResponse: aiResult
+          };
+
+          await Complaint.findByIdAndUpdate(complaint._id, {
+            $set: toUpdate,
+            $push: {
+              timeline: {
+                status: 'SUBMITTED',
+                note: `AI automated triage completed (Severity: ${toUpdate.severity || complaint.severity}, Category: ${toUpdate.category || complaint.category})`,
+                updatedBy: req.user._id,
+                timestamp: new Date()
+              }
+            }
+          });
+        } catch (aiError) {
+          const safeMessage = sanitizeError(aiError);
+          console.warn(`[ComplaintController] Background AI triage notice for complaint #${complaint._id}: ${safeMessage}`);
+          await Complaint.findByIdAndUpdate(complaint._id, {
+            $set: {
+              'aiAnalysis.status': 'PENDING',
+              'aiAnalysis.error': safeMessage
+            }
+          }).catch(() => {});
+        }
+      });
+    }
   } catch (error) {
     const safeError = sanitizeError(error);
     console.error('[ComplaintController.createComplaint] Error:', safeError);
@@ -268,6 +301,11 @@ export const updateComplaint = async (req, res) => {
   }
 };
 
+// Utility to escape regex special characters to prevent ReDoS / query injection
+const escapeRegex = (string) => {
+  return typeof string === 'string' ? string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+};
+
 // @desc    Get all complaints across municipality with filtering & search
 // @route   GET /api/admin/complaints
 // @access  Private (Admin only)
@@ -286,22 +324,25 @@ export const getAdminComplaints = async (req, res) => {
     if (severity && severity !== 'ALL') {
       filter.severity = severity.toUpperCase();
     }
-    if (search) {
+    if (search && typeof search === 'string' && search.trim()) {
+      const sanitizedSearch = escapeRegex(search.trim().slice(0, 100));
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { address: { $regex: search, $options: 'i' } }
+        { title: { $regex: sanitizedSearch, $options: 'i' } },
+        { description: { $regex: sanitizedSearch, $options: 'i' } },
+        { address: { $regex: sanitizedSearch, $options: 'i' } }
       ];
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
 
     const [complaints, total] = await Promise.all([
       Complaint.find(filter)
         .populate('createdBy', 'name email phone ward')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit))
+        .limit(limitNum)
         .lean(),
       Complaint.countDocuments(filter)
     ]);
@@ -310,8 +351,8 @@ export const getAdminComplaints = async (req, res) => {
       success: true,
       count: complaints.length,
       total,
-      page: Number(page),
-      pages: Math.ceil(total / Number(limit)),
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
       complaints
     });
   } catch (error) {
@@ -364,6 +405,10 @@ export const updateComplaintStatus = async (req, res) => {
 
     await complaint.save();
 
+    if (global.clearAnalyticsCache) {
+      global.clearAnalyticsCache();
+    }
+
     return res.status(200).json({
       success: true,
       message: `Complaint status updated to ${normalizedStatus}`,
@@ -378,11 +423,26 @@ export const updateComplaintStatus = async (req, res) => {
   }
 };
 
+// In-memory cache for similar complaint detection to avoid repeated Gemini calls
+const similarComplaintsCache = new Map();
+const SIMILAR_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 // @desc    Detect nearby similar or duplicate complaints using geospatial + AI
 // @route   GET /api/complaints/:id/similar
 // @access  Private (Citizen owner or Admin)
 export const getSimilarComplaints = async (req, res) => {
   try {
+    const maxDistanceMeters = Number(req.query.radius) || 1000; // 1km default radius
+    const cacheKey = `${req.params.id}|${maxDistanceMeters}`;
+
+    if (similarComplaintsCache.has(cacheKey)) {
+      const entry = similarComplaintsCache.get(cacheKey);
+      if (Date.now() - entry.timestamp < SIMILAR_CACHE_TTL) {
+        return res.status(200).json({ ...entry.data, cached: true });
+      }
+      similarComplaintsCache.delete(cacheKey);
+    }
+
     const complaint = await Complaint.findById(req.params.id);
 
     if (!complaint) {
@@ -412,8 +472,6 @@ export const getSimilarComplaints = async (req, res) => {
         adminReviewRequired: true
       });
     }
-
-    const maxDistanceMeters = Number(req.query.radius) || 1000; // 1km default radius
 
     // 1. Filter candidates by geographic proximity ($near) and matching category
     // Using 2dsphere geospatial index
@@ -467,7 +525,7 @@ export const getSimilarComplaints = async (req, res) => {
       candidates
     });
 
-    return res.status(200).json({
+    const responsePayload = {
       success: true,
       complaintId: complaint._id,
       hasCandidates: true,
@@ -476,7 +534,14 @@ export const getSimilarComplaints = async (req, res) => {
       similarComplaints: duplicateAnalysis.similarComplaints,
       summaryExplanation: duplicateAnalysis.summaryExplanation,
       adminReviewRequired: true
+    };
+
+    similarComplaintsCache.set(cacheKey, {
+      data: responsePayload,
+      timestamp: Date.now()
     });
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     const safeErr = sanitizeError(error);
     console.error('[ComplaintController.getSimilarComplaints] Error:', safeErr);

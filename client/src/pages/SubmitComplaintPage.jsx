@@ -6,7 +6,8 @@ import {
   ArrowRight, 
   Loader2, 
   AlertCircle, 
-  Users
+  Users,
+  Globe
 } from 'lucide-react';
 import complaintService, { COMPLAINT_CATEGORIES } from '../services/complaintService';
 import LocationPicker from '../components/maps/LocationPicker';
@@ -21,6 +22,7 @@ export default function SubmitComplaintPage() {
     address: 'Near Cross Road 3, Civil Lines, Ward 14',
     affectedGroup: 'Pedestrians, Local Commuters',
     severity: 'MEDIUM',
+    language: 'auto',
     coordinates: [77.2090, 28.6139] // standard GeoJSON [longitude, latitude]
   });
 
@@ -100,7 +102,8 @@ export default function SubmitComplaintPage() {
         severity: aiPreview ? aiPreview.severity : formData.severity,
         address: formData.address.trim(),
         location: geoJsonLocation,
-        affectedGroup: groups
+        affectedGroup: groups,
+        ...(formData.language !== 'auto' ? { language: formData.language } : {})
       };
 
       const res = await complaintService.createComplaint(payload);
@@ -173,6 +176,35 @@ export default function SubmitComplaintPage() {
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
             2. Issue Details & Impact
           </label>
+
+          {/* Multilingual Support Guidance Banner */}
+          <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="p-1.5 bg-blue-600 text-white rounded-lg shrink-0">
+                <Globe className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-xs text-blue-950">
+                <span className="font-bold">Multilingual Grievance Support: </span>
+                <span className="text-slate-600">
+                  Write in <strong>English</strong>, <strong>हिन्दी (Hindi)</strong>, or <strong>ଓଡ଼ିଆ (Odia)</strong>. Gemini AI auto-detects language and generates a standardized English dispatch summary.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <span className="text-[11px] font-semibold text-slate-500">Language:</span>
+              <select
+                value={formData.language}
+                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-blue-600 cursor-pointer shadow-2xs"
+              >
+                <option value="auto">Auto-Detect</option>
+                <option value="en">English</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="or">ଓଡ଼ିଆ (Odia)</option>
+              </select>
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">

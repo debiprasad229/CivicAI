@@ -7,11 +7,13 @@ import {
   Printer, 
   Loader2, 
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Globe
 } from 'lucide-react';
 import complaintService from '../services/complaintService';
 import { getComplaintById as getMockComplaintById } from '../utils/mockData';
-import { StatusBadge, SeverityBadge, CategoryBadge, DuplicateBadge } from '../components/common/Badge';
+import { StatusBadge, SeverityBadge, CategoryBadge, DuplicateBadge, LanguageBadge } from '../components/common/Badge';
 import AITriageCard from '../components/common/AITriageCard';
 import SimilarComplaintsCard from '../components/complaints/SimilarComplaintsCard';
 import MapContainer from '../components/common/MapContainer';
@@ -154,6 +156,7 @@ export default function ComplaintDetailsPage() {
             <StatusBadge status={complaint.status} />
             <SeverityBadge severity={complaint.severity} score={complaint.aiAnalysis?.urgencyScore} />
             <CategoryBadge category={complaint.category} />
+            <LanguageBadge language={complaint.language} />
             <DuplicateBadge duplicateId={complaint.aiAnalysis?.potentialDuplicateOf} />
           </div>
           <span className="text-xs text-slate-500 font-medium">
@@ -161,13 +164,40 @@ export default function ComplaintDetailsPage() {
           </span>
         </div>
 
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            {complaint.title}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-            {complaint.description}
-          </p>
+        <div className="space-y-4 pt-2">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              {complaint.title}
+            </h1>
+            
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1">
+                <span>Citizen's Original Grievance</span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  Preserved verbatim (Language: {complaint.language?.toUpperCase() || 'EN'})
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                {complaint.originalDescription || complaint.description}
+              </p>
+            </div>
+          </div>
+
+          {/* AI Standardized English Summary */}
+          {complaint.aiSummary && (
+            <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-lg space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <span>AI Standardized English Summary</span>
+                <span className="text-[10px] font-medium text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-full">
+                  Unified Municipal Dispatch
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
+                {complaint.aiSummary}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Progress Stepper */}

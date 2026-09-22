@@ -8,7 +8,8 @@ import {
   createHotspotMarkerIcon,
   getSeverityConfig,
   setupTileLayer,
-  SEVERITY_CONFIG
+  SEVERITY_CONFIG,
+  escapeHtml
 } from '../../utils/leafletUtils';
 import { 
   Layers, 
@@ -251,25 +252,31 @@ export default function CivicMap({
       const address = c.address || c.location?.address || 'Civic Infrastructure Point';
       const status = c.status || 'SUBMITTED';
 
+      const safeTitle = escapeHtml(c.title || 'Civic Grievance');
+      const safeAddress = escapeHtml(address);
+      const safeCategory = escapeHtml(category);
+      const safeStatus = escapeHtml(status);
+      const safeId = encodeURIComponent(complaintId);
+
       const popupHtml = `
         <div class="p-3.5 text-xs" style="min-width: 220px; max-width: 280px;">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase" style="background-color: ${sevConf.bgColor}; color: ${sevConf.textColor}; border: 1px solid ${sevConf.borderColor};">
               ${sevConf.label}
             </span>
-            <span class="text-[10px] font-semibold text-slate-500 uppercase">${status}</span>
+            <span class="text-[10px] font-semibold text-slate-500 uppercase">${safeStatus}</span>
           </div>
 
-          <h4 class="font-bold text-slate-900 text-xs mb-1 line-clamp-2 leading-snug">${c.title || 'Civic Grievance'}</h4>
+          <h4 class="font-bold text-slate-900 text-xs mb-1 line-clamp-2 leading-snug">${safeTitle}</h4>
           
           <div class="text-[11px] text-slate-600 mb-2 line-clamp-1 flex items-center gap-1">
             <span>📍</span>
-            <span>${address}</span>
+            <span>${safeAddress}</span>
           </div>
 
           <div class="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-500">
-            <span class="font-medium text-slate-700">${category}</span>
-            ${complaintId ? `<a href="/app/complaints/${complaintId}" class="font-semibold text-blue-600 hover:text-blue-800 hover:underline">View Dossier &rarr;</a>` : ''}
+            <span class="font-medium text-slate-700">${safeCategory}</span>
+            ${safeId ? `<a href="/app/complaints/${safeId}" class="font-semibold text-blue-600 hover:text-blue-800 hover:underline">View Dossier &rarr;</a>` : ''}
           </div>
         </div>
       `;
@@ -286,14 +293,20 @@ export default function CivicMap({
       validEntries.push(coords);
     });
 
-    // Auto fit bounds if requested and complaints exist and no hotspot selected
+    // Auto fit bounds if requested and complaints exist and no hotspot selected (debounced)
     if (fitBoundsOnLoad && validEntries.length > 0 && !selectedLocation && !selectedHotspot) {
-      try {
-        const bounds = L.latLngBounds(validEntries);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-      } catch {
-        // ignore bounds calculation edge cases
-      }
+      const fitTimer = setTimeout(() => {
+        try {
+          if (mapInstanceRef.current) {
+            const bounds = L.latLngBounds(validEntries);
+            mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+          }
+        } catch {
+          // ignore bounds calculation edge cases
+        }
+      }, 100);
+
+      return () => clearTimeout(fitTimer);
     }
   }, [complaints, selectedComplaint, onSelectComplaint, fitBoundsOnLoad, selectedLocation, showComplaints, activeLayerMode, selectedHotspot]);
 
@@ -369,16 +382,16 @@ export default function CivicMap({
           <div class="space-y-1.5 text-[11px] text-slate-600 mb-2">
             <div class="flex items-center justify-between">
               <span class="text-slate-500 font-medium">Dominant Domain:</span>
-              <span class="font-bold text-slate-900">${hotspot.dominantCategory}</span>
+              <span class="font-bold text-slate-900">${escapeHtml(hotspot.dominantCategory || 'General')}</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-slate-500 font-medium">Cluster Radius:</span>
-              <span class="font-mono text-slate-700 font-semibold">~${hotspot.radiusMeters || 100}m</span>
+              <span class="font-mono text-slate-700 font-semibold">~${Number(hotspot.radiusMeters) || 100}m</span>
             </div>
             ${hotspot.addresses && hotspot.addresses.length > 0 ? `
               <div class="text-[10px] text-slate-500 truncate pt-1 border-t border-slate-100 flex items-center gap-1">
                 <span>📍</span>
-                <span class="truncate">${hotspot.addresses[0]}</span>
+                <span class="truncate">${escapeHtml(hotspot.addresses[0])}</span>
               </div>
             ` : ''}
           </div>

@@ -59,10 +59,16 @@ export const analyzeComplaintHandler = async (req, res) => {
         skipCache: force
       });
 
-      // Update complaint in database
+      // Update complaint in database (never overwrite originalDescription or description)
+      if (!complaint.originalDescription && complaint.description) {
+        complaint.originalDescription = complaint.description;
+      }
       complaint.severity = analysis.severity || complaint.severity;
       if (analysis.category && COMPLAINT_CATEGORIES.includes(analysis.category)) {
         complaint.category = analysis.category;
+      }
+      if (analysis.language) {
+        complaint.language = analysis.language;
       }
       complaint.aiSummary = analysis.summary || complaint.aiSummary;
       if (Array.isArray(analysis.affectedGroup) && analysis.affectedGroup.length > 0) {

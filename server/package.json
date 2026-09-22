@@ -5,13 +5,17 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
+    "build": "echo 'CivicAI server build complete'",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node test-workflow.mjs",
     "test:gemini": "node test-gemini.mjs",
     "test:similar": "node test-similar.mjs",
     "test:analytics": "node test-analytics.mjs",
-    "test:hotspots": "node test-hotspots.mjs"
+    "test:hotspots": "node test-hotspots.mjs",
+    "test:recommendations": "node test-hotspot-recommendations.mjs",
+    "test:multilingual": "node test-multilingual.mjs",
+    "seed": "node src/seed.js"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",
@@ -19,6 +23,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5"
   }

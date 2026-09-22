@@ -2,9 +2,13 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 // Helper to sign JWT token
+// Helper to sign JWT token with production secret enforcement
 const generateToken = (id, role) => {
-  const secret = process.env.JWT_SECRET || 'civicai_jwt_dev_secret_key_change_in_prod';
-  return jwt.sign({ id, role }, secret, {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET environment variable is missing in production environment.');
+  }
+  return jwt.sign({ id, role }, secret || 'civicai_jwt_dev_secret_key_change_in_prod', {
     expiresIn: '30d'
   });
 };
@@ -39,12 +43,27 @@ export const register = async (req, res) => {
       });
     }
 
+    // Privilege escalation protection: in production, admin role requires authorization secret
+    let assignedRole = 'citizen';
+    if (role === 'admin') {
+      if (process.env.NODE_ENV === 'production') {
+        const adminSecret = req.body.adminSecret || req.headers['x-admin-secret'];
+        if (process.env.ADMIN_REGISTRATION_SECRET && adminSecret === process.env.ADMIN_REGISTRATION_SECRET) {
+          assignedRole = 'admin';
+        } else {
+          assignedRole = 'citizen';
+        }
+      } else {
+        assignedRole = 'admin';
+      }
+    }
+
     // Create user (password automatically hashed in pre-save hook)
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password,
-      role: role === 'admin' ? 'admin' : 'citizen',
+      role: assignedRole,
       ward: ward ? ward.trim() : 'Ward 14 (Central)',
       phone: phone ? phone.trim() : ''
     });

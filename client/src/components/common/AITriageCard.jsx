@@ -8,7 +8,7 @@ import {
   CheckCircle2, 
   FileText
 } from 'lucide-react';
-import { SeverityBadge, DuplicateBadge, CategoryBadge } from './Badge';
+import { SeverityBadge, DuplicateBadge, CategoryBadge, LanguageBadge } from './Badge';
 
 export default function AITriageCard({ aiAnalysis, complaint = null }) {
   if (!aiAnalysis && !complaint) return null;
@@ -88,6 +88,7 @@ export default function AITriageCard({ aiAnalysis, complaint = null }) {
           {potentialDuplicateOf && (
             <DuplicateBadge duplicateId={potentialDuplicateOf} />
           )}
+          <LanguageBadge language={complaint?.language || analysis.language} />
           <SeverityBadge severity={severity} />
           <CategoryBadge category={category} />
         </div>
@@ -130,9 +131,14 @@ export default function AITriageCard({ aiAnalysis, complaint = null }) {
         {/* AI Executive Summary */}
         {summary && (
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
-              <FileText className="w-3.5 h-3.5 text-indigo-600" />
-              <span>AI Dispatch Summary</span>
+            <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                <span>AI Standardized English Summary</span>
+              </div>
+              <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                Multilingual Triage
+              </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-700 bg-indigo-50/40 border border-indigo-100 rounded-lg p-3 leading-relaxed">
               {summary}
