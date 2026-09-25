@@ -66,17 +66,14 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // 2. Allow Vercel preview/branch deployments if CLIENT_URL has a vercel.app domain
-    const hasVercelClient = configuredOrigins.some((url) => url.includes('.vercel.app'));
-    if (hasVercelClient) {
-      try {
-        const parsedUrl = new URL(cleanOrigin);
-        if (parsedUrl.hostname.endsWith('.vercel.app')) {
-          return callback(null, true);
-        }
-      } catch (e) {
-        // invalid origin url format, ignore
+    // 2. Allow Vercel preview/branch/production deployments (*.vercel.app) or serverless environment
+    try {
+      const parsedUrl = new URL(cleanOrigin);
+      if (parsedUrl.hostname.endsWith('.vercel.app') || process.env.VERCEL) {
+        return callback(null, true);
       }
+    } catch (e) {
+      // invalid origin url format, ignore
     }
 
     // 3. In non-production, be permissive for local development tools

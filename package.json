@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node server/src/index.js",
-    "build": "npm run build --prefix client",
+    "build": "cd client && npm install && npm run build",
     "server": "node server/src/index.js",
     "client": "npm run dev --prefix client",
-    "vercel-build": "npm run build --prefix client"
+    "vercel-build": "cd client && npm install && npm run build"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",
