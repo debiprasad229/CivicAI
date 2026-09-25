@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Building2, 
   ArrowRight, 
@@ -19,11 +19,42 @@ import {
   Clock,
   TrendingUp,
   FileSearch,
-  Users
+  Users,
+  ChevronDown,
+  LogOut,
+  LayoutDashboard,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import { INFRASTRUCTURE_CATEGORIES } from '../utils/mockData';
+import { useAuth } from '../context/AuthContext';
 
 export default function LandingPage() {
+  const [showOfficerBlocker, setShowOfficerBlocker] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const { user, role, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const isOfficer = isAuthenticated && role === 'admin';
+  const dashboardPath = role === 'admin' ? '/app/admin' : '/app/citizen';
+  const displayName = user?.name || (role === 'admin' ? 'Municipal Officer' : 'Resident Citizen');
+  const avatarInitials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  const handleReportClick = (e) => {
+    if (e) e.preventDefault();
+    if (isOfficer) {
+      setShowOfficerBlocker(true);
+      return;
+    }
+    navigate('/app/citizen/submit');
+  };
+
+  const handleSwitchToCitizenLogin = () => {
+    setShowOfficerBlocker(false);
+    logout();
+    navigate('/login');
+  };
+
   const categoryIcons = {
     roads: Construction,
     water: Droplets,
@@ -59,19 +90,82 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link 
-              to="/login"
-              className="text-sm font-semibold text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/app/citizen/submit"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors"
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-hidden"
+                  aria-label="User Profile Menu"
+                >
+                  <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-semibold ${
+                    role === 'admin' ? 'bg-slate-900 ring-2 ring-slate-800' : 'bg-blue-600 ring-2 ring-blue-500'
+                  }`}>
+                    {avatarInitials}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-xs font-semibold text-slate-900 leading-tight">
+                      {displayName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 capitalize">
+                      {role === 'admin' ? 'Municipal Officer' : 'Resident Citizen'}
+                    </div>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
+                </button>
+
+                {profileDropdownOpen && (
+                  <div 
+                    className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-lg py-1.5 z-50 animate-in fade-in-50"
+                    onClick={() => setProfileDropdownOpen(false)}
+                  >
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs font-semibold text-slate-900">{displayName}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+                      <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        role === 'admin' ? 'bg-slate-900 text-white' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      }`}>
+                        {role === 'admin' ? 'Municipal Officer' : 'Resident Citizen'}
+                      </span>
+                    </div>
+
+                    <div className="py-1">
+                      <Link
+                        to={dashboardPath}
+                        className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                      >
+                        <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
+                        Go to Dashboard
+                      </Link>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-1">
+                      <button
+                        onClick={logout}
+                        className="w-full px-4 py-2 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link 
+                to="/login"
+                className="text-sm font-semibold text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
+
+            <button
+              onClick={handleReportClick}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <span>Report Issue</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -94,13 +188,13 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-            <Link
-              to="/app/citizen/submit"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-500/10 transition-colors"
+            <button
+              onClick={handleReportClick}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-500/10 transition-colors cursor-pointer"
             >
               <span>Report an Infrastructure Issue</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
             <Link
               to="/app/admin"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 shadow-2xs transition-colors"
@@ -372,18 +466,18 @@ export default function LandingPage() {
             Report infrastructure problems directly to municipal authorities or explore the real-time GIS command dashboard.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/app/citizen/submit"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            <button
+              onClick={handleReportClick}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors cursor-pointer"
             >
               <span>Submit a Civic Report</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
             <Link
-              to="/login"
+              to={isAuthenticated ? dashboardPath : "/login"}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold border border-slate-700 transition-colors"
             >
-              <span>Sign In to Dashboard</span>
+              <span>{isAuthenticated ? 'Go to Dashboard' : 'Sign In to Dashboard'}</span>
             </Link>
           </div>
         </div>
@@ -405,6 +499,58 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Municipal Officer Report Blocker Modal */}
+      {showOfficerBlocker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in-50">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <button
+                  onClick={() => setShowOfficerBlocker(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <h3 className="text-base font-bold text-slate-900 tracking-tight mb-1.5">
+                Citizen Account Required
+              </h3>
+              
+              <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 mb-3">
+                <p className="text-xs font-semibold text-amber-900">
+                  Sign in using citizen id to report a complaint
+                </p>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                You are currently signed in as a <strong>Municipal Officer</strong> ({user?.name || 'Admin'}). Grievance filings must be submitted by verified citizen accounts to accurately link issues to citizen wards and profiles.
+              </p>
+
+              <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
+                <button
+                  onClick={handleSwitchToCitizenLogin}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  <span>Sign In as Citizen</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowOfficerBlocker(false)}
+                  className="px-4 py-2.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
