@@ -1,8 +1,7 @@
 import axios from 'axios';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
-// In production: points to Render backend (e.g., https://civicai-api.onrender.com/api)
-// In local dev: defaults to '/api' which Vite proxies to http://localhost:5000
+// Defaults to '/api' (routes to Vercel Serverless Functions in production, or Vite proxy in local dev)
 const baseURL = rawApiUrl ? rawApiUrl.trim().replace(/\/+$/, '') : '/api';
 
 const api = axios.create({

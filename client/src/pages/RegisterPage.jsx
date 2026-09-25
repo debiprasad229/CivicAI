@@ -5,12 +5,12 @@ import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: 'Rohan Sharma',
-    email: 'rohan.sharma@example.com',
-    phone: '+91 98765 43210',
-    ward: 'Ward 14 (Central)',
-    password: 'password123',
-    confirmPassword: 'password123'
+    name: '',
+    email: '',
+    phone: '',
+    ward: '',
+    password: '',
+    confirmPassword: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,6 +95,7 @@ export default function RegisterPage() {
                   type="text"
                   name="name"
                   required
+                  placeholder="e.g. Rohan Sharma"
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
@@ -112,6 +113,7 @@ export default function RegisterPage() {
                   type="email"
                   name="email"
                   required
+                  placeholder="name@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
@@ -130,6 +132,7 @@ export default function RegisterPage() {
                     type="tel"
                     name="phone"
                     required
+                    placeholder="+91 98765 43210"
                     value={formData.phone}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
@@ -147,6 +150,7 @@ export default function RegisterPage() {
                     type="text"
                     name="ward"
                     required
+                    placeholder="e.g. Ward 14 (Central)"
                     value={formData.ward}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
@@ -166,6 +170,7 @@ export default function RegisterPage() {
                     type="password"
                     name="password"
                     required
+                    placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
@@ -183,6 +188,7 @@ export default function RegisterPage() {
                     type="password"
                     name="confirmPassword"
                     required
+                    placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"

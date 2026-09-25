@@ -1,6 +1,6 @@
-# CivicAI Production Deployment Guide
+# CivicAI Vercel Serverless Deployment Guide
 
-This guide provides end-to-end instructions for deploying **CivicAI** to production across **Vercel** (Frontend SPA), **Render** (Node.js Backend), and **MongoDB Atlas** (Managed Cloud Database), integrated with **Google Gemini** (AI Categorization/Triage) and **Geoapify** (GIS Maps & Geocoding).
+This guide details the single-platform deployment for **CivicAI** on **Vercel** using **Vercel Serverless Functions** (Express API) and **Vercel Static Hosting** (React + Vite SPA).
 
 ---
 
@@ -8,129 +8,106 @@ This guide provides end-to-end instructions for deploying **CivicAI** to product
 
 ```mermaid
 flowchart TD
-    User["Citizen / Official Browser"] -->|"HTTPS (React SPA)"| Vercel["Vercel Frontend (Vite + React)"]
-    Vercel -->|"API Requests (CORS)"| Render["Render Web Service (Node.js/Express)"]
-    Render -->|"Database Queries (TLS)"| Atlas["MongoDB Atlas Cluster (M0 Free Tier)"]
-    Render -->|"AI Triage & Hotspots"| Gemini["Google Gemini API"]
-    Vercel -->|"Vector Map Tiles"| Geoapify["Geoapify GIS API"]
+    User["Citizen / Official Browser"] -->|"HTTPS Requests"| Vercel["Vercel Cloud Platform"]
+    
+    subgraph Vercel["Vercel (Single Project)"]
+        SPA["Frontend SPA (React 18 / Vite / Leaflet)"]
+        API["Serverless Function /api/* (Express.js)"]
+    end
+    
+    SPA -->|"/api/* (Same Origin)"| API
+    API -->|"TLS Queries"| Atlas["MongoDB Atlas (Cluster M0 Free)"]
+    API -->|"AI Triage & Hotspots"| Gemini["Google Gemini API"]
+    SPA -->|"Vector Map Tiles"| Geoapify["Geoapify GIS API"]
 ```
 
-| Component | Provider | Tier / Type | Responsibilities |
-| :--- | :--- | :--- | :--- |
-| **Frontend** | [Vercel](https://vercel.com/) | Hobby (Free) | React 18 SPA, Leaflet GIS map, Vite build, Tailwind CSS |
-| **Backend** | [Render](https://render.com/) | Free Web Service | Express API, JWT Auth, AI pipeline, geospatial aggregation |
-| **Database** | [MongoDB Atlas](https://www.mongodb.com/atlas) | M0 Sandbox (Free) | Persistent storage, 2dsphere indexes, complaints, users |
-| **AI Engine** | [Google AI Studio](https://aistudio.google.com/) | Free Gemini API | Automated categorization, severity scoring, routing |
-| **Mapping / GIS**| [Geoapify](https://www.geoapify.com/) | Free Developer Tier | Interactive raster/vector tiles, forward/reverse geocoding |
+### Why Vercel Serverless?
+- **Zero Idle Spin-Down**: Unlike Render's free tier (which goes to sleep after 15 minutes and takes 50 seconds to wake up), Vercel serverless functions wake up instantly (~500ms).
+- **Same-Domain (No CORS issues)**: Frontend and API share the exact same domain name (`your-app.vercel.app`), eliminating cross-origin errors completely.
+- **One Project, One Dashboard**: No need to maintain separate hosting accounts and multiple Git connections.
 
 ---
 
 ## 📋 Pre-Deployment Checklist
 
-- [ ] A [GitHub](https://github.com/) account with the `CivicAI` repository pushed to `main`.
-- [ ] A [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) account.
-- [ ] A [Render](https://render.com/) account.
-- [ ] A [Vercel](https://vercel.com/) account.
+- [ ] A [GitHub](https://github.com/) account with the `CivicAI` repository.
+- [ ] A [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) free M0 account.
 - [ ] A [Google AI Studio](https://aistudio.google.com/app/apikey) Gemini API key.
 - [ ] A [Geoapify](https://myprojects.geoapify.com/) API key.
+- [ ] A [Vercel](https://vercel.com/) account.
 
 ---
 
 ## Step 1: Set Up MongoDB Atlas
 
-1. **Create a Free Cluster**:
-   - Log into MongoDB Atlas and click **Create Deployment**.
-   - Select **M0 Free** (Shared tier).
-   - Choose a cloud provider and region closest to your target users (e.g., `AWS / us-east-1` or `AWS / ap-south-1`).
-   - Cluster Name: e.g. `Cluster0` or `civicai-cluster`.
-
-2. **Configure Database User**:
-   - Go to **Security > Database Access**.
-   - Click **Add New Database User**.
-   - Authentication Method: **Password**.
-   - Set a secure username (e.g., `civicai_admin`) and generate a strong password. Save this password.
-   - Built-in Role: **Read and write to any database**.
-
-3. **Configure Network Access**:
-   - Go to **Security > Network Access**.
-   - Click **Add IP Address**.
-   - Select **Allow Access From Anywhere** (`0.0.0.0/0`).
-     > *Note*: Render free web services utilize dynamic outbound IP addresses, which requires `0.0.0.0/0` whitelist access.
-
-4. **Obtain Connection String**:
-   - In Atlas, go to **Database > Clusters** and click **Connect**.
-   - Choose **Drivers** (Node.js).
-   - Copy the SRV URI. It looks like:
+1. **Create Free Database**:
+   - Log into MongoDB Atlas, create a new deployment, and choose **M0 Free**.
+   - Database Name: `civicai`.
+2. **Create Database User**:
+   - Go to **Database Access** > **Add New Database User**.
+   - Set username & password. Assign **Read and write to any database**.
+3. **Allow Network Access**:
+   - Go to **Network Access** > **Add IP Address**.
+   - Select **Allow Access From Anywhere** (`0.0.0.0/0`) since serverless functions run on dynamic cloud IPs.
+4. **Copy Connection String**:
+   - In **Database** > **Connect** > **Drivers**, copy the SRV URI:
      ```text
-     mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority
-     ```
-   - Append the database name `civicai` before the query parameters:
-     ```text
-     mongodb+srv://civicai_admin:YOUR_PASSWORD@cluster0.abcde.mongodb.net/civicai?retryWrites=true&w=majority
+     mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/civicai?retryWrites=true&w=majority
      ```
 
 ---
 
-## Step 2: Obtain API Keys & Secrets
+## Step 2: Generate Secrets & Gather Keys
 
-### 1. Google Gemini API Key
-- Navigate to [Google AI Studio - Get API Key](https://aistudio.google.com/app/apikey).
-- Create or select a Google Cloud Project and generate an API key.
-- Key format: `AIzaSy...`
-
-### 2. Geoapify API Key
-- Navigate to [Geoapify MyProjects Dashboard](https://myprojects.geoapify.com/).
-- Create a new project called `CivicAI` and copy your Project API key.
-
-### 3. Generate JWT Secret
-Generate a cryptographically secure 256-bit secret for token signing. In your terminal:
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+1. **Google Gemini API Key**:
+   - Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. **Geoapify API Key**:
+   - Get your key from [Geoapify Dashboard](https://myprojects.geoapify.com/).
+3. **JWT Secret**:
+   - Generate a 32-byte secret in your terminal:
+     ```bash
+     node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+     ```
 
 ---
 
-## Step 3: Deploy Backend on Render
+## Step 3: Deploy Directly to Vercel
 
-1. **Create New Web Service**:
-   - Log into the [Render Dashboard](https://dashboard.render.com/).
-   - Click **New +** > **Web Service**.
-   - Connect your GitHub repository (`CivicAI`).
+1. **Import Repository**:
+   - Go to [Vercel Dashboard](https://vercel.com/dashboard).
+   - Click **Add New...** > **Project**.
+   - Select your `CivicAI` repository and click **Import**.
 
-2. **Configure Build & Runtime Settings**:
-   | Setting | Value |
-   | :--- | :--- |
-   | **Name** | `civicai-api` (or your choice) |
-   | **Region** | Select region matching or closest to MongoDB Atlas |
-   | **Branch** | `main` |
-   | **Root Directory** | `server` |
-   | **Runtime** | `Node` |
-   | **Build Command** | `npm install` *(or `npm install && npm run build`)* |
-   | **Start Command** | `npm start` |
-   | **Instance Type** | Free |
+2. **Project Settings**:
+   - **Framework Preset**: `Vite` (or `Other`)
+   - **Root Directory**: `./` *(leave as default root)*
+   - **Build Command**: `cd client && npm install && npm run build` *(auto-configured)*
+   - **Output Directory**: `client/dist` *(configured in `vercel.json`)*
 
 3. **Configure Environment Variables**:
-   In the **Environment** tab, add the following variables:
+   Under **Environment Variables**, add the following 5 keys:
 
-   | Variable Name | Example Value | Description |
+   | Variable Name | Value | Description |
    | :--- | :--- | :--- |
-   | `NODE_ENV` | `production` | Enables production security & logging |
-   | `PORT` | `10000` | (Render sets this automatically; defaults to 5000) |
-   | `MONGO_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/civicai?retryWrites=true&w=majority` | Atlas SRV URI from Step 1 |
-   | `JWT_SECRET` | `5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8` | Generated 32-byte secret |
+   | `NODE_ENV` | `production` | Enables production mode |
+   | `MONGO_URI` | `mongodb+srv://.../civicai?retryWrites=true&w=majority` | Atlas SRV URI |
+   | `JWT_SECRET` | `your_generated_32_byte_secret` | Secure auth token signing |
    | `GEMINI_API_KEY` | `AIzaSy...` | Google AI Studio Key |
-   | `CLIENT_URL` | `https://your-civicai-frontend.vercel.app` | *Leave placeholder for now; update after Vercel step* |
-   | `GEOAPIFY_API_KEY`| *(Optional)* | Optional server-side geocoding key |
+   | `VITE_GEOAPIFY_API_KEY` | `your_geoapify_key` | Geoapify key for frontend GIS maps |
+   | `GEOAPIFY_API_KEY` | `your_geoapify_key` | Geoapify key for backend geocoding |
 
 4. **Deploy**:
-   - Click **Create Web Service**.
-   - Wait 2–3 minutes for the build and container start.
-   - Once deployed, copy your Render URL: e.g. `https://civicai-api.onrender.com`.
+   - Click **Deploy**.
+   - Vercel will install dependencies, compile the client into `client/dist`, bundle the `/api/index.js` serverless function, and assign your live production URL (e.g., `https://civicai-app.vercel.app`).
 
-5. **Verify Backend Health**:
-   Open in your browser:
+---
+
+## Step 4: Verify Deployment
+
+1. **Health Check Endpoint**:
+   Visit:
    ```text
-   https://civicai-api.onrender.com/api/health
+   https://your-app.vercel.app/api/health
    ```
    Expected response:
    ```json
@@ -140,94 +117,11 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
      "server": "running",
      "database": {
        "status": "connected",
-       "connected": true,
-       "name": "civicai"
-     },
-     "message": "CivicAI API and MongoDB are running smoothly"
+       "connected": true
+     }
    }
    ```
 
----
-
-## Step 4: Deploy Frontend on Vercel
-
-1. **Import Project into Vercel**:
-   - Log into [Vercel Dashboard](https://vercel.com/dashboard).
-   - Click **Add New...** > **Project**.
-   - Import your `CivicAI` repository.
-
-2. **Configure Project Settings**:
-   - **Framework Preset**: `Vite`
-   - **Root Directory**: Click *Edit* and select `client` (or leave at `./` since root `vercel.json` will build `client/dist`). Selecting `client` is the standard approach.
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-   - **Install Command**: `npm install`
-
-3. **Configure Environment Variables**:
-   Under **Environment Variables**, add:
-
-   | Variable Name | Value | Description |
-   | :--- | :--- | :--- |
-   | `VITE_API_URL` | `https://civicai-api.onrender.com/api` | Full URL to your Render API with `/api` suffix |
-   | `VITE_GEOAPIFY_API_KEY` | `your_geoapify_key` | Geoapify project key for Leaflet map tiles |
-
-4. **Deploy**:
-   - Click **Deploy**.
-   - Vercel will install dependencies, build the Vite application, and deploy to a production URL (e.g., `https://civicai-gamer.vercel.app`).
-
----
-
-## Step 5: Finalize Production CORS
-
-1. Return to your **Render Dashboard** for the `civicai-api` service.
-2. Go to **Environment**.
-3. Update `CLIENT_URL` with your actual Vercel production domain:
-   ```text
-   CLIENT_URL=https://civicai-gamer.vercel.app
-   ```
-   *(Multiple domains can be separated by commas, e.g. `https://civicai-gamer.vercel.app,https://civicai.vercel.app`)*.
-4. Click **Save Changes**. Render will automatically trigger a zero-downtime redeploy.
-
----
-
-## Step 6: Post-Deployment Smoke Test
-
-Verify all core flows on the live production URL:
-
-1. **SPA Routing**:
-   - Navigate directly to `https://your-app.vercel.app/admin` or `https://your-app.vercel.app/login`.
-   - Verify the page loads without 404s (handled by `vercel.json` SPA rewrite rules).
-
-2. **User Authentication**:
-   - Visit `/register` and create a test citizen account.
-   - Verify JWT is returned and saved to `localStorage`.
-
-3. **AI Complaint Triage**:
-   - File a new complaint at `/submit` (e.g., *"Burst water pipeline flooding Main Street"*).
-   - Verify that Gemini auto-classifies the category to `Water Supply`, severity to `High`, and routes to `Water Supply & Sewerage Board`.
-   - Verify interactive Leaflet map pin selection functions.
-
-4. **Admin Dashboard & Analytics**:
-   - Log in with an admin account (or promote user role in MongoDB Atlas).
-   - Visit `/admin` to verify KPI cards, AI Hotspots with ML recommendations, and complaints table.
-
----
-
-## 🛠️ Operational Notes & Free-Tier Gotchas
-
-### Render Free-Tier Spin-Down
-Render's free tier spins down web services after **15 minutes of inactivity**.
-- The first request after sleep may experience a **30–50 second cold-start delay**.
-- To keep the service responsive during demonstrations, you can ping the health check endpoint (`https://civicai-api.onrender.com/api/health`) every 10 minutes using a free uptime monitor such as [UptimeRobot](https://uptimerobot.com/) or [cron-job.org](https://cron-job.org/).
-
-### MongoDB Atlas SRV Records on Windows
-The server automatically applies Google Public DNS (`8.8.8.8`) on startup to prevent Windows local DNS SRV resolution timeouts. On Linux (Render), native DNS resolves SRV records immediately.
-
----
-
-## 🔒 Security Summary
-
-- ✅ **No committed credentials**: All secrets (`.env`) are git-ignored. Only `.env.example` templates with placeholders are tracked.
-- ✅ **Strict CORS**: `server/src/app.js` permits only configured origins in production and blocks local ports.
-- ✅ **OWASP Headers**: `nosniff`, `DENY` framing, strict referrer policies enabled.
-- ✅ **Rate Limiting**: AI endpoints, authentication endpoints, and global routes are guarded by rate limiters.
+2. **Frontend UI**:
+   - Open `https://your-app.vercel.app` in your browser.
+   - Register a user, file a complaint with AI classification, view GIS heatmaps, and test the Admin dashboard.

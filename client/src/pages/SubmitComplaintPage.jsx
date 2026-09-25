@@ -19,8 +19,8 @@ export default function SubmitComplaintPage() {
     category: 'ROAD',
     title: '',
     description: '',
-    address: 'Near Cross Road 3, Civil Lines, Ward 14',
-    affectedGroup: 'Pedestrians, Local Commuters',
+    address: '',
+    affectedGroup: '',
     severity: 'MEDIUM',
     language: 'auto',
     coordinates: [77.2090, 28.6139] // standard GeoJSON [longitude, latitude]
