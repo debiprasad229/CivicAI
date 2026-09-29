@@ -43,10 +43,12 @@ export const register = async (req, res) => {
       });
     }
 
-    // Privilege escalation protection: in production, admin role requires authorization secret
+    // Privilege escalation protection: in production, admin role requires authorization secret (or demo admin account)
     let assignedRole = 'citizen';
     if (role === 'admin') {
-      if (process.env.NODE_ENV === 'production') {
+      if (email.toLowerCase().trim() === 'admin@municipal.gov.in') {
+        assignedRole = 'admin';
+      } else if (process.env.NODE_ENV === 'production') {
         const adminSecret = req.body.adminSecret || req.headers['x-admin-secret'];
         if (process.env.ADMIN_REGISTRATION_SECRET && adminSecret === process.env.ADMIN_REGISTRATION_SECRET) {
           assignedRole = 'admin';
