@@ -176,38 +176,50 @@ export default function SubmitComplaintPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 mb-1">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-            <span>Digital Public Infrastructure • Citizen Service Desk</span>
+      {/* Header & Quick Evaluation Scenarios */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 mb-1">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              <span>Digital Public Infrastructure • Citizen Service Desk</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Lodge Infrastructure Grievance
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Lodge Infrastructure Grievance
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Provide details and pin GPS location. Gemini AI triages urgency and dispatches to zonal engineers.
-          </p>
+          <span className="self-start sm:self-center px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-600">
+            Automated AI Triage Active
+          </span>
         </div>
 
+        <p className="text-xs sm:text-sm text-slate-600">
+          Provide issue details and pin the GPS location on the map. Google Gemini AI automatically assesses hazard severity, categorizes municipal department, and routes to field engineers.
+        </p>
+
         {/* Evaluation Demo Scenarios Shortcut */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 shrink-0">
-          <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <span>⚡</span>
-            <span>Evaluation Fast Demo (1-Click)</span>
+        <div className="bg-slate-50/90 border border-slate-200/80 rounded-xl p-3 sm:p-3.5">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>Evaluation Fast Demo (1-Click Fill)</span>
+            </span>
+            <span className="text-[10px] text-slate-500 hidden sm:inline">
+              Click any scenario to pre-fill test complaint
+            </span>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {DEMO_SCENARIOS.map((sc, i) => (
               <button
                 type="button"
                 key={i}
                 onClick={() => handleApplyScenario(sc)}
-                className="px-2.5 py-1 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-[11px] font-semibold text-slate-700 hover:text-blue-900 transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+                className="w-full px-3 py-2 rounded-lg bg-white hover:bg-blue-50/80 border border-slate-200 hover:border-blue-300 text-xs font-medium text-slate-700 hover:text-blue-900 transition-all shadow-2xs cursor-pointer flex items-center justify-between gap-2 text-left"
                 title={`Auto-fill ${sc.label}`}
               >
-                <span>{sc.label}</span>
-                <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${sc.badgeColor}`}>
+                <span className="font-semibold text-slate-800 text-[11px] truncate">{sc.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm font-bold shrink-0 border ${sc.badgeColor}`}>
                   {sc.badge}
                 </span>
               </button>
