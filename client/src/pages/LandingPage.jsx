@@ -174,44 +174,92 @@ export default function LandingPage() {
       <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28 bg-gradient-to-b from-slate-50 via-white to-slate-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-xs font-semibold text-blue-800 mb-8 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>AI for Digital Public Infrastructure & Governance Challenge</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold mb-6 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Digital Public Infrastructure (DPI) • GovTech Reference Architecture</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 max-w-4xl mx-auto leading-tight">
             Intelligent Public Infrastructure & Citizen Grievance Redressal
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mt-6 mb-10 leading-relaxed font-normal">
-            CivicAI harnesses Google Gemini to triage citizen infrastructure complaints, evaluate real-time hazard severity, deduplicate tickets, and dispatch actionable municipal workflows.
+          <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mt-5 mb-8 leading-relaxed font-normal">
+            Automating municipal grievance ingestion, multimodal hazard severity triage, geographic hotspot clustering, and SLA-guaranteed public works dispatch.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-            <button
-              onClick={handleReportClick}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-500/10 transition-colors cursor-pointer"
-            >
-              <span>Report an Infrastructure Issue</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <Link
-              to="/app/admin"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 shadow-2xs transition-colors"
-            >
-              <ShieldCheck className="w-4 h-4 text-slate-500" />
-              <span>Municipal Command Portal</span>
-            </Link>
+          {/* 2-Minute Hackathon Demonstration Interactive Card */}
+          <div className="max-w-3xl mx-auto mb-10 p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-100 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+                  <Zap className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900">2-Minute Fast Evaluator Walkthrough</h3>
+                  <p className="text-[11px] text-slate-500">Test the entire end-to-end municipal pipeline in two clicks:</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 self-start sm:self-auto">
+                No Setup Required
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/40 hover:bg-blue-50 transition-colors flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                      Step 1 • Citizen Experience
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400">~ 45 sec</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900">Lodge an Incident</h4>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Use our 1-click test scenarios (Water Pipe Rupture / Pothole / Blackout) to observe automated Gemini classification and SLA routing.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleReportClick}
+                  className="mt-3 w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Launch Citizen Filing</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded">
+                      Step 2 • Municipal Command
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400">~ 60 sec</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900">Admin Intelligence Dashboard</h4>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Inspect the live GeoJSON GIS map, spatial density clustering, ML hotspot recommendations, and municipal resolution metrics.
+                  </p>
+                </div>
+                <Link
+                  to="/app/admin"
+                  className="mt-3 w-full py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-2xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <span>Launch Officer Command Center</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Trust Highlights */}
-          <div className="mt-14 pt-8 border-t border-slate-200/60 max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-left">
+          <div className="mt-8 pt-6 border-t border-slate-200/60 max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-left">
             <div>
               <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">100%</div>
-              <p className="text-xs text-slate-500 mt-1">Autonomous Gemini AI Triage</p>
+              <p className="text-xs text-slate-500 mt-1">Autonomous Multimodal Triage</p>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">&lt; 2 hrs</div>
+              <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">&lt; 4 hrs</div>
               <p className="text-xs text-slate-500 mt-1">Critical Hazard Dispatch SLA</p>
             </div>
             <div>
@@ -220,7 +268,7 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900">Geo-GIS</div>
-              <p className="text-xs text-slate-500 mt-1">Spatial Mapping & Hotspots</p>
+              <p className="text-xs text-slate-500 mt-1">2dsphere Spatial Clustering</p>
             </div>
           </div>
 

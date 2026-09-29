@@ -25,31 +25,69 @@ import { useAuth } from '../context/AuthContext';
 export default function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { user, role, logout } = useAuth();
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
+  const { user, role, logout, login, register } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const isCitizen = role === 'citizen';
   const isAdmin = role === 'admin';
 
-  const displayName = user?.name || (isAdmin ? 'Dr. Neha Kapoor (IAS)' : 'Rohan Sharma');
-  const displayEmail = user?.email || (isAdmin ? 'commissioner@metro.gov.in' : 'citizen@civic.gov');
-  const displayWard = user?.ward || (isAdmin ? 'Central Command Headquarters' : 'Ward 14 (Central)');
+  const displayName = user?.name || (isAdmin ? 'Municipal Officer (BMC)' : 'Resident Citizen');
+  const displayEmail = user?.email || (isAdmin ? 'admin@municipal.gov.in' : 'citizen@civic.org');
+  const displayWard = user?.ward || (isAdmin ? 'Central Municipal Headquarters' : 'Ward 14 (Central Bhubaneswar)');
   const avatarInitials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
   const citizenNav = [
-    { name: 'Dashboard', path: '/app/citizen', icon: LayoutDashboard },
-    { name: 'Submit Complaint', path: '/app/citizen/submit', icon: PlusCircle },
-    { name: 'My Complaints', path: '/app/citizen/complaints', icon: FileText }
+    { name: 'Citizen Dashboard', path: '/app/citizen', icon: LayoutDashboard },
+    { name: 'Lodge Grievance', path: '/app/citizen/submit', icon: PlusCircle },
+    { name: 'My Grievance Ledger', path: '/app/citizen/complaints', icon: FileText }
   ];
 
   const adminNav = [
     { name: 'Command Center', path: '/app/admin', icon: LayoutDashboard },
-    { name: 'All Complaints', path: '/app/admin/complaints', icon: Layers },
-    { name: 'City Analytics', path: '/app/admin/analytics', icon: BarChart3 }
+    { name: 'Complaint Dossiers', path: '/app/admin/complaints', icon: Layers },
+    { name: 'Municipal Analytics', path: '/app/admin/analytics', icon: BarChart3 }
   ];
 
   const currentNav = isCitizen ? citizenNav : adminNav;
+
+  const handleQuickRoleSwitch = async () => {
+    setIsSwitchingRole(true);
+    const targetRole = isCitizen ? 'admin' : 'citizen';
+    const demoCreds = targetRole === 'admin'
+      ? {
+          name: 'Municipal Commissioner (BMC)',
+          email: 'admin@municipal.gov.in',
+          password: 'adminpassword123',
+          role: 'admin',
+          phone: '+91 9988776655',
+          ward: 'Central Municipal Headquarters'
+        }
+      : {
+          name: 'Demo Citizen (Bhubaneswar)',
+          email: 'citizen@civic.org',
+          password: 'password123',
+          role: 'citizen',
+          phone: '+91 9876543210',
+          ward: 'Ward 14 (Central Bhubaneswar)'
+        };
+
+    try {
+      try {
+        await login(demoCreds.email, demoCreds.password);
+      } catch (loginErr) {
+        await register(demoCreds);
+        await login(demoCreds.email, demoCreds.password);
+      }
+      navigate(targetRole === 'admin' ? '/app/admin' : '/app/citizen');
+    } catch (err) {
+      console.error('Role switch failed:', err);
+    } finally {
+      setIsSwitchingRole(false);
+      setMobileMenuOpen(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -188,6 +226,21 @@ export default function AppLayout() {
               <p className={`text-xs ${isCitizen ? 'text-blue-950 font-medium' : 'text-slate-200 font-medium'}`}>
                 {isCitizen ? 'Lodge & track community reports' : 'Triage, maps & resolution dispatch'}
               </p>
+
+              {/* Fast 1-Click Role Switcher for Hackathon Demonstrations */}
+              <button
+                type="button"
+                onClick={handleQuickRoleSwitch}
+                disabled={isSwitchingRole}
+                className={`mt-2.5 w-full py-1.5 px-2 rounded-md text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
+                  isCitizen
+                    ? 'bg-white hover:bg-blue-100/60 border border-blue-200 text-blue-900 shadow-2xs'
+                    : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 shadow-2xs'
+                }`}
+                title={isCitizen ? "Switch to Municipal Officer Command Center" : "Switch to Resident Citizen View"}
+              >
+                <span>{isSwitchingRole ? 'Switching...' : isCitizen ? '⇄ Switch to Officer View' : '⇄ Switch to Citizen View'}</span>
+              </button>
             </div>
           </div>
 
@@ -233,12 +286,12 @@ export default function AppLayout() {
           {/* Sidebar Footer */}
           <div className="p-3 border-t border-slate-100 bg-slate-50/50">
             <div className="flex items-center justify-between text-xs text-slate-500 px-2 py-1">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                Gemini AI 2.0 Triage
+              <span className="flex items-center gap-1.5 font-medium text-slate-600">
+                <Shield className="w-3.5 h-3.5 text-slate-700" />
+                <span>GovTech DPI v2.4</span>
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-emerald-100 text-emerald-800">
-                Online
+                Operational
               </span>
             </div>
           </div>

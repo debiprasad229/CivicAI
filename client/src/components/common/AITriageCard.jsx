@@ -56,12 +56,12 @@ export default function AITriageCard({ aiAnalysis, complaint = null }) {
       {/* Card Header */}
       <div className="px-5 py-4 bg-slate-50/90 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 shrink-0">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <span>Gemini AI Triage Assessment</span>
+              <span>Automated Incident Triage & SLA Matrix</span>
               <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                 status === 'COMPLETED' 
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
@@ -70,17 +70,17 @@ export default function AITriageCard({ aiAnalysis, complaint = null }) {
                 {status === 'COMPLETED' ? (
                   <>
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Completed</span>
+                    <span>Verified</span>
                   </>
                 ) : (
                   <>
                     <Clock className="w-3 h-3 animate-spin" />
-                    <span>Pending Triage</span>
+                    <span>Processing Triage</span>
                   </>
                 )}
               </span>
             </h4>
-            <p className="text-xs text-slate-500">Autonomous classification, severity scoring & response plan</p>
+            <p className="text-xs text-slate-500">Autonomous risk categorization, spatial radius assessment & division dispatch</p>
           </div>
         </div>
 
@@ -98,7 +98,12 @@ export default function AITriageCard({ aiAnalysis, complaint = null }) {
         {/* Urgency Meter & Department */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-            <span className="text-xs font-semibold text-slate-500 block mb-1">Severity / Urgency Metric</span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-500">Hazard Priority Index</span>
+              <span className="text-[10px] font-bold uppercase text-slate-400">
+                {urgencyScore >= 80 ? '< 4h SLA' : urgencyScore >= 60 ? '< 12h SLA' : '< 48h SLA'}
+              </span>
+            </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold font-mono text-slate-900">{urgencyScore}</span>
               <span className="text-xs text-slate-400">/ 100</span>
@@ -110,6 +115,9 @@ export default function AITriageCard({ aiAnalysis, complaint = null }) {
                 style={{ width: `${urgencyScore}%` }}
               />
             </div>
+            <span className="text-[10px] text-slate-400 block mt-1.5 font-medium">
+              {urgencyScore >= 80 ? 'Emergency dispatch protocol' : urgencyScore >= 60 ? 'Priority field dispatch' : 'Scheduled maintenance queue'}
+            </span>
           </div>
 
           <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 md:col-span-2 flex flex-col justify-center">

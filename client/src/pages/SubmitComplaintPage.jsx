@@ -30,6 +30,60 @@ export default function SubmitComplaintPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [photoSelected, setPhotoSelected] = useState(false);
 
+  // 1-Click Evaluation Scenarios for rapid 2-minute demonstration
+  const DEMO_SCENARIOS = [
+    {
+      label: '🚰 Water Pipeline Rupture',
+      badge: 'High Severity',
+      badgeColor: 'bg-orange-100 text-orange-800 border-orange-200',
+      data: {
+        category: 'WATER',
+        title: 'Treated drinking water main fracture flooding pedestrian parikrama',
+        description: 'A major treated drinking water distribution line has ruptured near the main square. Thousands of liters of clean drinking water are gushing out, flooding pedestrian crossings and cutting off water pressure to over 200 nearby residences.',
+        address: 'Bindu Sagar Parikrama Road, Old Town, Bhubaneswar, Odisha 751002',
+        affectedGroup: 'Pilgrims, Local Residents, Shop Owners',
+        severity: 'HIGH',
+        coordinates: [85.8332, 20.2402]
+      }
+    },
+    {
+      label: '⚠️ Road Hazard near School',
+      badge: 'Critical Hazard',
+      badgeColor: 'bg-red-100 text-red-800 border-red-200',
+      data: {
+        category: 'ROAD',
+        title: 'Severe road cave-in and dangerous pothole near primary school gate',
+        description: 'A 2-foot wide, 8-inch deep road crater has formed directly in front of the school gate. Water accumulates inside it and two-wheelers have skidded during morning rush hours. Poses severe collision hazard to children and cyclists.',
+        address: 'KIIT Road Service Lane, Patia, Bhubaneswar, Odisha 751024',
+        affectedGroup: 'School Children, Commuters, Cyclists',
+        severity: 'CRITICAL',
+        coordinates: [85.8182, 20.3552]
+      }
+    },
+    {
+      label: '💡 Streetlight Corridor Blackout',
+      badge: 'Safety Hazard',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+      data: {
+        category: 'STREET_LIGHT',
+        title: 'Complete blackout of 4 high-mast streetlights in commercial lane',
+        description: 'Four consecutive street luminaires have failed along the busy commercial market corridor. The entire 200m stretch is completely pitch dark after 7 PM, creating safety concerns for women pedestrians and evening shoppers.',
+        address: 'Block B Market Avenue, Saheed Nagar, Bhubaneswar, Odisha 751007',
+        affectedGroup: 'Women Pedestrians, Evening Commuters, Vendors',
+        severity: 'MEDIUM',
+        coordinates: [85.8455, 20.2920]
+      }
+    }
+  ];
+
+  const handleApplyScenario = (scenario) => {
+    setFormData(prev => ({
+      ...prev,
+      ...scenario.data
+    }));
+    setErrorMessage('');
+  };
+
   // Dynamic simulated AI triage preview as user types
   const getPreTriageInsights = () => {
     const text = (formData.title + ' ' + formData.description).toLowerCase();
@@ -123,17 +177,43 @@ export default function SubmitComplaintPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
-        <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 mb-1">
-          <Sparkles className="w-4 h-4 text-blue-600" />
-          <span>Municipal Citizen Service</span>
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 mb-1">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+            <span>Digital Public Infrastructure • Citizen Service Desk</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Lodge Infrastructure Grievance
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Provide details and pin GPS location. Gemini AI triages urgency and dispatches to zonal engineers.
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          Lodge Infrastructure Grievance
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Provide accurate details and GPS location. The issue is assigned an official ticket and routed directly to municipal field engineers.
-        </p>
+
+        {/* Evaluation Demo Scenarios Shortcut */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 shrink-0">
+          <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <span>⚡</span>
+            <span>Evaluation Fast Demo (1-Click)</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {DEMO_SCENARIOS.map((sc, i) => (
+              <button
+                type="button"
+                key={i}
+                onClick={() => handleApplyScenario(sc)}
+                className="px-2.5 py-1 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-[11px] font-semibold text-slate-700 hover:text-blue-900 transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+                title={`Auto-fill ${sc.label}`}
+              >
+                <span>{sc.label}</span>
+                <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${sc.badgeColor}`}>
+                  {sc.badge}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {errorMessage && (
@@ -207,30 +287,41 @@ export default function SubmitComplaintPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Short Summary / Title *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-700">
+                Short Summary / Title *
+              </label>
+              <span className={`text-[10px] font-mono ${formData.title.length > 130 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                {formData.title.length}/150
+              </span>
+            </div>
             <input
               type="text"
               required
+              maxLength={150}
               placeholder="e.g. Deep pothole causing skidding near school gate"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shadow-2xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Detailed Description *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-700">
+                Detailed Description *
+              </label>
+              <span className="text-[10px] font-mono text-slate-400">
+                {formData.description.length} chars
+              </span>
+            </div>
             <textarea
               required
               rows={4}
               placeholder="Describe the hazard, water leakage depth, duration, or traffic disruption in detail..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shadow-2xs"
             />
           </div>
 

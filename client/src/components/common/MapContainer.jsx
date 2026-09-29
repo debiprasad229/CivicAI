@@ -19,6 +19,7 @@ export default function MapContainer({
   interactive = true,
   onLocationSelect = null,
   selectedLocation = null,
+  fitBoundsOnLoad = true,
   className = ''
 }) {
   return (
@@ -33,6 +34,7 @@ export default function MapContainer({
       showComplaints={showComplaints}
       selectedLocation={selectedLocation}
       onLocationSelect={onLocationSelect}
+      fitBoundsOnLoad={fitBoundsOnLoad}
       center={center}
       zoom={zoom}
       height={height}
