@@ -2,7 +2,7 @@
 ### AI-Powered Digital Public Infrastructure for Municipal Governance & Grievance Resolution
 
 [![Vercel Deployment](https://img.shields.io/badge/Production%20App-Vercel-black?style=flat&logo=vercel)](https://civic-ai-mocha.vercel.app/)
-[![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini%202.5-4285F4?style=flat&logo=google)](https://ai.google.dev/)
+[![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini%203.6%20Flash-4285F4?style=flat&logo=google)](https://ai.google.dev/)
 [![Geoapify](https://img.shields.io/badge/GIS-Geoapify%20API-FF6B6B?style=flat)](https://www.geoapify.com/)
 [![MongoDB Atlas](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248?style=flat&logo=mongodb)](https://www.mongodb.com/atlas)
 
@@ -20,7 +20,7 @@ Citizens can lodge infrastructure grievances with interactive GIS map pinning an
 
 ## ⚡ Instant Demo Credentials
 
-The platform features one-click demo login buttons directly on the [Login Page](https://civic-ai-mocha.vercel.app/login):
+Pre-seeded demo credentials for testing (with a quick **Fill credentials** helper on the [Login Page](https://civic-ai-mocha.vercel.app/login)):
 
 | Role | Demo Email | Password | Primary Capabilities |
 | :--- | :--- | :--- | :--- |
@@ -39,7 +39,7 @@ The platform features one-click demo login buttons directly on the [Login Page](
 - **Personal Grievance Ledger**: Real-time status badge tracking (`Submitted` → `Under Review` → `In Progress` → `Resolved`).
 - **Transparency Dossier**: Inspect department assignment, verified address, and incident timestamps.
 
-### 2. 🧠 Google Gemini AI Engine
+### 2. 🧠 Google Gemini 3.6 Flash AI Engine
 - **Automated Categorization**: Accurately classifies grievances into civic departments (*Roads & Bridges, Water Supply & Sewage, Solid Waste Management, Street Lighting, Drainage & Stormwater, Public Transit*).
 - **Hazard & Priority Scoring**: Quantifies risk on a 0–100 scale and sets urgency tier (*Critical, High, Medium, Low*).
 - **Spatial Duplicate Detection**: Compares incoming reports against active nearby complaints using semantic proximity to prevent municipal ticket bloat.
@@ -77,7 +77,7 @@ flowchart TD
 
     subgraph External ["Cloud & External Services"]
         MDB[(MongoDB Atlas)]
-        GEMINI[Google Gemini 2.5 Flash API]
+        GEMINI[Google Gemini 3.6 Flash API]
         GEO[Geoapify Geocoding & Tiles]
     end
 
@@ -104,7 +104,7 @@ flowchart TD
 | **Data Visualizations** | Recharts | Interactive time-series and workload distribution charts |
 | **Backend Framework** | Node.js, Express.js (ES Modules) | High-performance RESTful micro-services architecture |
 | **Database & ODM** | MongoDB Atlas, Mongoose | Flexible NoSQL schema with geospatial indices |
-| **AI / LLM Integration** | Google Gemini API (`@google/genai`) | Autonomous categorization, severity scoring, duplicate check, and intervention synthesis |
+| **AI / LLM Integration** | Google Gemini 3.6 Flash (`@google/genai`) | Autonomous categorization, severity scoring, duplicate check, and intervention synthesis |
 | **Authentication** | JSON Web Tokens (JWT), bcryptjs | Secure stateless auth with strict role separation (`citizen` vs `admin`) |
 | **Hosting & Deployment** | Vercel | Production cloud deployment |
 
@@ -203,7 +203,7 @@ npm run dev
 ## 👥 Authors & Acknowledgments
 
 - **Developed for:** AI for Communities & GovTech Civic Hackathon
-- **Special Thanks:** Built with Google Gemini 2.5 Flash, Geoapify GIS Platform, and OpenStreetMap Contributors.
+- **Special Thanks:** Built with Google Gemini 3.6 Flash, Geoapify GIS Platform, and OpenStreetMap Contributors.
 
 ---
 *GovTech Digital Public Infrastructure (DPI) • Built with ❤️ for Smarter, Resilient Cities.*
