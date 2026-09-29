@@ -31,7 +31,7 @@ export default function CitizenDashboard() {
       setLoading(true);
       setError('');
       const res = await complaintService.getMyComplaints();
-      const data = res.data?.complaints || res.data || [];
+      const data = res?.complaints || res?.data?.complaints || (Array.isArray(res?.data) ? res.data : []) || (Array.isArray(res) ? res : []);
       setComplaints(data);
     } catch (err) {
       console.error('Failed to load citizen complaints:', err);

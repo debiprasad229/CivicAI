@@ -67,10 +67,17 @@ export default function AdminAnalyticsPage() {
         complaintService.getAdminAnalyticsTrends(30)
       ]);
 
-      if (ovRes.data?.data) setOverview(ovRes.data.data);
-      if (catRes.data?.data?.categories) setCategories(catRes.data.data.categories);
-      if (sevRes.data?.data?.severities) setSeverities(sevRes.data.data.severities);
-      if (trendRes.data?.data?.trends) setTrends(trendRes.data.data.trends);
+      const overviewData = ovRes?.data || (ovRes?.total !== undefined ? ovRes : null);
+      if (overviewData) setOverview(overviewData);
+
+      const catList = catRes?.data?.categories || catRes?.categories || (Array.isArray(catRes?.data) ? catRes.data : []);
+      if (catList.length > 0) setCategories(catList);
+
+      const sevList = sevRes?.data?.severities || sevRes?.severities || (Array.isArray(sevRes?.data) ? sevRes.data : []);
+      if (sevList.length > 0) setSeverities(sevList);
+
+      const trendList = trendRes?.data?.trends || trendRes?.trends || (Array.isArray(trendRes?.data) ? trendRes.data : []);
+      if (trendList.length > 0) setTrends(trendList);
     } catch (err) {
       console.error('Failed to load live analytics:', err);
     } finally {

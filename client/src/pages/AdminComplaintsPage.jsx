@@ -38,10 +38,11 @@ export default function AdminComplaintsPage() {
         status: statusFilter,
         severity: severityFilter
       });
-      setComplaints(res.data?.complaints || res.data || []);
+      const list = res?.complaints || res?.data?.complaints || (Array.isArray(res?.data) ? res.data : []) || (Array.isArray(res) ? res : []);
+      setComplaints(list);
     } catch (err) {
       console.error('Failed to load complaints:', err);
-      setError(err.response?.data?.message || 'Failed to load administrative complaints.');
+      setError(err.response?.data?.message || err.message || 'Failed to load administrative complaints.');
     } finally {
       setLoading(false);
     }

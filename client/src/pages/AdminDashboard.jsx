@@ -97,10 +97,11 @@ export default function AdminDashboard() {
     setRecommendationError(null);
     try {
       const res = await complaintService.getHotspotRecommendation(hotspot.id, hotspot, forceRefresh);
-      if (res?.data) {
+      const recData = res?.data || res;
+      if (recData) {
         setHotspotRecommendations((prev) => ({
           ...prev,
-          [hotspot.id]: res.data
+          [hotspot.id]: recData
         }));
       }
     } catch (err) {
@@ -148,23 +149,32 @@ export default function AdminDashboard() {
         complaintService.getAdminHotspots()
       ]);
 
-      if (overviewRes.data?.data) {
-        setOverview(overviewRes.data.data);
+      const overviewData = overviewRes?.data || (overviewRes?.total !== undefined ? overviewRes : null);
+      if (overviewData) {
+        setOverview(overviewData);
       }
-      if (catRes.data?.data?.categories) {
-        setCategoriesData(catRes.data.data.categories);
+
+      const catList = catRes?.data?.categories || catRes?.categories || (Array.isArray(catRes?.data) ? catRes.data : []);
+      if (catList.length > 0) {
+        setCategoriesData(catList);
       }
-      if (sevRes.data?.data?.severities) {
-        setSeverityData(sevRes.data.data.severities);
+
+      const sevList = sevRes?.data?.severities || sevRes?.severities || (Array.isArray(sevRes?.data) ? sevRes.data : []);
+      if (sevList.length > 0) {
+        setSeverityData(sevList);
       }
-      if (trendsRes.data?.data?.trends) {
-        setTrendsData(trendsRes.data.data.trends);
+
+      const trendList = trendsRes?.data?.trends || trendsRes?.trends || (Array.isArray(trendsRes?.data) ? trendsRes.data : []);
+      if (trendList.length > 0) {
+        setTrendsData(trendList);
       }
-      const complaintList = complaintsRes.data?.complaints || complaintsRes.data || [];
+
+      const complaintList = complaintsRes?.complaints || complaintsRes?.data?.complaints || (Array.isArray(complaintsRes?.data) ? complaintsRes.data : []) || [];
       setComplaints(complaintList);
 
-      if (hotspotsRes.data?.data?.hotspots) {
-        setHotspots(hotspotsRes.data.data.hotspots);
+      const hotspotList = hotspotsRes?.data?.hotspots || hotspotsRes?.hotspots || (Array.isArray(hotspotsRes?.data) ? hotspotsRes.data : []);
+      if (hotspotList.length > 0) {
+        setHotspots(hotspotList);
       }
 
     } catch (err) {
