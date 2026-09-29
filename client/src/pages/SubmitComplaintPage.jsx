@@ -29,6 +29,7 @@ export default function SubmitComplaintPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [photoSelected, setPhotoSelected] = useState(false);
+  const [selectedDemo, setSelectedDemo] = useState(null);
 
   // 1-Click Evaluation Scenarios for rapid 2-minute demonstration
   const DEMO_SCENARIOS = [
@@ -77,11 +78,54 @@ export default function SubmitComplaintPage() {
   ];
 
   const handleApplyScenario = (scenario) => {
+    // If the active scenario is clicked again, toggle it off and clear fields
+    if (selectedDemo === scenario.label) {
+      setFormData(prev => ({
+        ...prev,
+        title: '',
+        description: '',
+        address: '',
+        affectedGroup: '',
+        severity: 'MEDIUM'
+      }));
+      setSelectedDemo(null);
+      setPhotoSelected(false);
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       ...scenario.data
     }));
+    setSelectedDemo(scenario.label);
     setErrorMessage('');
+  };
+
+  const handleCategorySelect = (categoryId) => {
+    // If details were auto-filled by a demo scenario and user selects any other defect/category,
+    // clear the auto-written description, title, address, and demographics
+    const isFromDemo = Boolean(selectedDemo) || DEMO_SCENARIOS.some(
+      sc => sc.data.title === formData.title || sc.data.description === formData.description
+    );
+
+    if (isFromDemo) {
+      setFormData(prev => ({
+        ...prev,
+        category: categoryId,
+        title: '',
+        description: '',
+        address: '',
+        affectedGroup: '',
+        severity: 'MEDIUM'
+      }));
+      setSelectedDemo(null);
+      setPhotoSelected(false);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        category: categoryId
+      }));
+    }
   };
 
   // Dynamic simulated AI triage preview as user types
@@ -210,20 +254,30 @@ export default function SubmitComplaintPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {DEMO_SCENARIOS.map((sc, i) => (
-              <button
-                type="button"
-                key={i}
-                onClick={() => handleApplyScenario(sc)}
-                className="w-full px-3 py-2 rounded-lg bg-white hover:bg-blue-50/80 border border-slate-200 hover:border-blue-300 text-xs font-medium text-slate-700 hover:text-blue-900 transition-all shadow-2xs cursor-pointer flex items-center justify-between gap-2 text-left"
-                title={`Auto-fill ${sc.label}`}
-              >
-                <span className="font-semibold text-slate-800 text-[11px] truncate">{sc.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm font-bold shrink-0 border ${sc.badgeColor}`}>
-                  {sc.badge}
-                </span>
-              </button>
-            ))}
+            {DEMO_SCENARIOS.map((sc, i) => {
+              const isActive = selectedDemo === sc.label;
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => handleApplyScenario(sc)}
+                  className={`w-full px-3 py-2 rounded-lg border text-xs font-medium transition-all shadow-2xs cursor-pointer flex items-center justify-between gap-2 text-left ${
+                    isActive
+                      ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20 text-blue-900 font-semibold'
+                      : 'bg-white hover:bg-blue-50/80 border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-900'
+                  }`}
+                  title={isActive ? `Click to deselect ${sc.label}` : `Auto-fill ${sc.label}`}
+                >
+                  <span className="text-[11px] truncate flex items-center gap-1.5">
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>}
+                    <span>{sc.label}</span>
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-sm font-bold shrink-0 border ${sc.badgeColor}`}>
+                    {sc.badge}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -248,8 +302,8 @@ export default function SubmitComplaintPage() {
                 <button
                   type="button"
                   key={cat.id}
-                  onClick={() => setFormData({ ...formData, category: cat.id })}
-                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                  onClick={() => handleCategorySelect(cat.id)}
+                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
                     isSelected
                       ? 'border-blue-600 bg-blue-50/70 text-blue-900 ring-1 ring-blue-600'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -313,7 +367,10 @@ export default function SubmitComplaintPage() {
               maxLength={150}
               placeholder="e.g. Deep pothole causing skidding near school gate"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                if (selectedDemo) setSelectedDemo(null);
+              }}
               className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shadow-2xs"
             />
           </div>
@@ -332,7 +389,10 @@ export default function SubmitComplaintPage() {
               rows={4}
               placeholder="Describe the hazard, water leakage depth, duration, or traffic disruption in detail..."
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+                if (selectedDemo) setSelectedDemo(null);
+              }}
               className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shadow-2xs"
             />
           </div>
