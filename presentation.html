@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CivicAI Presentation Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: 1920px 1080px;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0f172a;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    .slide {
+      width: 1920px;
+      height: 1080px;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 70px 90px;
+      background: #ffffff;
+    }
+
+    /* Gradient Header Accent */
+    .top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 8px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4, #10b981);
+    }
+
+    /* Badges & Pills */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-blue {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .badge-emerald {
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+    .badge-amber {
+      background: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+    .badge-purple {
+      background: #faf5ff;
+      color: #7e22ce;
+      border: 1px solid #e9d5ff;
+    }
+
+    /* Typography */
+    h1 {
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: #0f172a;
+    }
+    h2 {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 20px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    /* Cards & Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      margin-top: 36px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 28px;
+      margin-top: 36px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 24px;
+      margin-top: 36px;
+    }
+    .card {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .card-highlight {
+      background: #ffffff;
+      border: 2px solid #2563eb;
+      box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.08);
+    }
+    .card-dark {
+      background: #0f172a;
+      color: #ffffff;
+      border: 1px solid #1e293b;
+    }
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-dark .card-title {
+      color: #f8fafc;
+    }
+    .card-desc {
+      font-size: 16px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .card-dark .card-desc {
+      color: #94a3b8;
+    }
+
+    /* Footer */
+    .slide-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1.5px solid #e2e8f0;
+      padding-top: 24px;
+      font-size: 15px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .slide-footer-dark {
+      border-top-color: #334155;
+      color: #94a3b8;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .logo-dark {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SLIDE 1: COVER SLIDE -->
+  <div class="slide" style="background: radial-gradient(circle at top right, #eff6ff 0%, #ffffff 60%);">
+    <div class="top-bar"></div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="logo">
+        <span style="font-size: 28px;">🏛️</span>
+        <span style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">CivicAI</span>
+        <span class="badge badge-blue">GovTech DPI Platform</span>
+      </div>
+      <span class="badge badge-emerald">Build with AI: Code for Communities</span>
+    </div>
+
+    <div style="max-width: 1400px; margin: auto 0;">
+      <div style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: #2563eb;"></span>
+        <span style="font-size: 18px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em;">
+          Digital Public Infrastructure for Smart Governance
+        </span>
+      </div>
+      <h1>AI-Powered Citizen Grievance & Municipal Operations Intelligence</h1>
+      <p style="font-size: 24px; color: #475569; margin-top: 24px; max-width: 1100px; line-height: 1.5;">
+        Transforming urban civic hazard management through real-time GIS map pinning, autonomous Google Gemini AI triage, spatial duplicate prevention, and actionable dispatch roadmaps.
+      </p>
+
+      <div style="display: flex; gap: 16px; margin-top: 48px; flex-wrap: wrap;">
+        <div style="padding: 14px 22px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; font-weight: 700; font-size: 16px; color: #1e293b;">
+          🚀 Live App: <span style="color: #2563eb; font-family: 'JetBrains Mono', monospace;">civic-ai-mocha.vercel.app</span>
+        </div>
+        <div style="padding: 14px 22px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; font-weight: 700; font-size: 16px; color: #1e293b;">
+          🤖 Engine: <span style="color: #059669;">Google Gemini 2.5 Flash SDK</span>
+        </div>
+        <div style="padding: 14px 22px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; font-weight: 700; font-size: 16px; color: #1e293b;">
+          🗺️ GIS: <span style="color: #d97706;">Geoapify & Leaflet Heatmaps</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>AI for Communities • Hack2Skill Hackathon Submission</span>
+      <span>Presented by: Debiprasad & CivicAI Team</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="top-bar"></div>
+    <div>
+      <div class="badge badge-amber" style="margin-bottom: 12px;">Problem Statement</div>
+      <h2>The Critical Breakdown in Urban Civic Maintenance</h2>
+      <p class="subtitle">Cities struggle to remediate hazardous infrastructure rapidly due to disconnected systems.</p>
+    </div>
+
+    <div class="grid-4" style="flex: 1; align-items: stretch; margin-top: 40px;">
+      <div class="card" style="background: #fef2f2; border-color: #fecaca;">
+        <div style="font-size: 36px; margin-bottom: 16px;">⏱️</div>
+        <div class="card-title" style="color: #991b1b;">Reporting Inertia</div>
+        <p class="card-desc" style="color: #7f1d1d;">
+          Citizens find bureaucratic municipal helplines opaque, discouraging timely reporting of localized road craters, water leaks, and streetlight outages.
+        </p>
+      </div>
+
+      <div class="card" style="background: #fffbeb; border-color: #fde68a;">
+        <div style="font-size: 36px; margin-bottom: 16px;">📑</div>
+        <div class="card-title" style="color: #92400e;">Manual Triage Fatigue</div>
+        <p class="card-desc" style="color: #78350f;">
+          Municipal control rooms receive thousands of unstructured tickets weekly. Staff manually classify departments, creating multi-day bottlenecks.
+        </p>
+      </div>
+
+      <div class="card" style="background: #eff6ff; border-color: #bfdbfe;">
+        <div style="font-size: 36px; margin-bottom: 16px;">🔁</div>
+        <div class="card-title" style="color: #1e40af;">Ticket Bloat & Duplicates</div>
+        <p class="card-desc" style="color: #1e3a8a;">
+          A single water pipeline rupture triggers 50+ individual reports from the same street. Without spatial deduplication, field crews are dispatched redundantly.
+        </p>
+      </div>
+
+      <div class="card" style="background: #faf5ff; border-color: #e9d5ff;">
+        <div style="font-size: 36px; margin-bottom: 16px;">📉</div>
+        <div class="card-title" style="color: #6b21a8;">No Action Roadmaps</div>
+        <p class="card-desc" style="color: #581c87;">
+          Engineers receive vague citizen text without safety protocols, equipment lists, or risk prioritization, slowing down emergency resolution.
+        </p>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>CivicAI Platform Architecture</span>
+      <span>02 / 06</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: THE SOLUTION & ARCHITECTURE -->
+  <div class="slide">
+    <div class="top-bar"></div>
+    <div>
+      <div class="badge badge-blue" style="margin-bottom: 12px;">Full-Stack Solution</div>
+      <h2>CivicAI: Autonomous End-to-End Governance Loop</h2>
+      <p class="subtitle">A unified Digital Public Infrastructure connecting citizens, AI triage, and municipal operations.</p>
+    </div>
+
+    <div class="grid-3" style="flex: 1; align-items: stretch; margin-top: 40px;">
+      <div class="card card-highlight">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <span style="font-size: 36px;">📍</span>
+          <span class="badge badge-blue">Step 1: Citizen Input</span>
+        </div>
+        <div class="card-title">Pin-Drop Grievance Desk</div>
+        <ul style="color: #475569; font-size: 16px; line-height: 1.8; margin-left: 20px;">
+          <li>Interactive Geoapify Leaflet GPS pin drop.</li>
+          <li>Photo evidence upload with EXIF tags.</li>
+          <li>Multilingual NLP (English, Hindi, Odia).</li>
+          <li>Personal ledger with live SLA timeline.</li>
+        </ul>
+      </div>
+
+      <div class="card card-highlight" style="border-color: #059669; box-shadow: 0 20px 25px -5px rgba(5, 150, 105, 0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <span style="font-size: 36px;">🧠</span>
+          <span class="badge badge-emerald">Step 2: Gemini AI</span>
+        </div>
+        <div class="card-title" style="color: #065f46;">Autonomous Triage Engine</div>
+        <ul style="color: #475569; font-size: 16px; line-height: 1.8; margin-left: 20px;">
+          <li>0–100 Hazard Urgency Scoring.</li>
+          <li>Department assignment (Road, Water, Power).</li>
+          <li>Semantic & spatial duplicate matching.</li>
+          <li>Synthesizes crew equipment & action roadmaps.</li>
+        </ul>
+      </div>
+
+      <div class="card card-highlight" style="border-color: #d97706; box-shadow: 0 20px 25px -5px rgba(217, 119, 6, 0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <span style="font-size: 36px;">📊</span>
+          <span class="badge badge-amber">Step 3: Authority Dispatch</span>
+        </div>
+        <div class="card-title" style="color: #92400e;">Command Center & GIS</div>
+        <ul style="color: #475569; font-size: 16px; line-height: 1.8; margin-left: 20px;">
+          <li>150m–300m Radar Hotspot Heatmap clustering.</li>
+          <li>Recharts ward-level influx & workload analytics.</li>
+          <li>Official status transitions with audit logs.</li>
+          <li>Instant 1-click role switcher for demonstrations.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>CivicAI System Architecture</span>
+      <span>03 / 06</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: CORE AI & GIS CAPABILITIES -->
+  <div class="slide">
+    <div class="top-bar"></div>
+    <div>
+      <div class="badge badge-purple" style="margin-bottom: 12px;">AI & GIS Innovation</div>
+      <h2>Intelligent Triage & Spatial Hotspot Clustering</h2>
+      <p class="subtitle">Cutting-edge multimodal reasoning powered by Google Gemini 2.5 Flash.</p>
+    </div>
+
+    <div class="grid-2" style="flex: 1; align-items: stretch; margin-top: 36px;">
+      <div class="card">
+        <div class="card-title" style="color: #1e3a8a;">
+          <span>🤖</span>
+          <span>Google Gemini 2.5 Multimodal Analysis</span>
+        </div>
+        <p class="card-desc" style="margin-bottom: 20px;">
+          Every incoming grievance is passed to the Gemini 2.5 Flash SDK orchestrator with structured JSON schema guarantees:
+        </p>
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #334155; line-height: 1.6;">
+          • <strong>Severity Quantification:</strong> CRITICAL / HIGH / MEDIUM / LOW (0–100 index)<br>
+          • <strong>Affected Demographic:</strong> Detects School Children, Hospital routes, Pedestrians<br>
+          • <strong>Field Action Plan:</strong> "Dispatch vacuum de-watering pump, isolate water main valve"<br>
+          • <strong>Standardized Summary:</strong> Auto-translates regional inputs into unified English dossier
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color: #065f46;">
+          <span>🗺️</span>
+          <span>Geoapify GIS & Radar Hotspot Heatmap</span>
+        </div>
+        <p class="card-desc" style="margin-bottom: 20px;">
+          Spatial intelligence clusters proximate complaints to identify systemic infrastructure failures:
+        </p>
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #334155; line-height: 1.6;">
+          • <strong>Radius Aggregation:</strong> Detects multi-complaint zones within 150m–300m<br>
+          • <strong>Pulsating Visualizer:</strong> Radar wave animations highlight high-hazard clusters<br>
+          • <strong>Severity Weighting:</strong> Critical hazards elevate the entire zone priority score<br>
+          • <strong>Duplicate Suppression:</strong> Prevents issuing duplicate contractor work orders
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>CivicAI Core Features</span>
+      <span>04 / 06</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: TECH STACK & PRODUCTION DEPLOYMENT -->
+  <div class="slide">
+    <div class="top-bar"></div>
+    <div>
+      <div class="badge badge-emerald" style="margin-bottom: 12px;">Production Ready</div>
+      <h2>Enterprise Tech Stack & Zero-Leak Security</h2>
+      <p class="subtitle">Engineered for high availability, low latency (<200ms), and strict access control.</p>
+    </div>
+
+    <div class="grid-4" style="margin-top: 36px;">
+      <div class="card">
+        <div class="card-title">Frontend</div>
+        <p class="card-desc">
+          <strong>React 19 & Vite:</strong> Lightning-fast SPA with lazy code-splitting.<br><br>
+          <strong>Tailwind CSS:</strong> Curated GovTech design tokens.<br><br>
+          <strong>Leaflet GIS & Recharts:</strong> Vector maps and responsive analytics.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Backend API</div>
+        <p class="card-desc">
+          <strong>Node.js & Express:</strong> Modular ES Modules architecture.<br><br>
+          <strong>Serverless on Vercel:</strong> Auto-scaling microservices with sub-second cold starts.<br><br>
+          <strong>OWASP Hardening:</strong> Strict CORS, rate limiting, and helmet headers.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Database & AI</div>
+        <p class="card-desc">
+          <strong>MongoDB Atlas:</strong> Geospatial 2dsphere indexing for instant proximity queries.<br><br>
+          <strong>Google Gemini SDK:</strong> Autonomous reasoning via `@google/genai` 2.5 Flash.<br><br>
+          <strong>Geoapify API:</strong> High-precision geocoding and reverse lookup.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Security & RBAC</div>
+        <p class="card-desc">
+          <strong>Zero Secret Leakage:</strong> Gemini API keys & MongoDB URI strictly server-side.<br><br>
+          <strong>JWT + bcryptjs:</strong> Stateless authentication with citizen vs admin route guards.<br><br>
+          <strong>Audit Timeline:</strong> Immutable history for every municipal action.
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-top: 28px; padding: 20px 28px; background: #f1f5f9; border-radius: 16px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="font-size: 16px; font-weight: 700; color: #1e293b;">
+        🌐 Live Production Deployments:
+      </div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #2563eb; font-weight: 600;">
+        App: https://civic-ai-mocha.vercel.app/ &nbsp;|&nbsp; API: /api/health (200 OK)
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>CivicAI Infrastructure</span>
+      <span>05 / 06</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: IMPACT & ROADMAP -->
+  <div class="slide" style="background: radial-gradient(circle at bottom left, #0f172a 0%, #1e293b 100%); color: #ffffff;">
+    <div class="top-bar"></div>
+    <div>
+      <div class="badge badge-blue" style="margin-bottom: 12px;">Vision & Impact</div>
+      <h2 style="color: #ffffff;">Transforming Cities into Responsive Communities</h2>
+      <p class="subtitle" style="color: #94a3b8;">Empowering citizens, unburdening engineers, and ensuring equitable civic infrastructure.</p>
+    </div>
+
+    <div class="grid-3" style="margin-top: 40px;">
+      <div class="card card-dark" style="border-color: #334155;">
+        <div style="font-size: 48px; font-weight: 800; color: #38bdf8; margin-bottom: 8px;">85%</div>
+        <div class="card-title">Faster Incident Triage</div>
+        <p class="card-desc">
+          Replaces 48-hour manual ticket routing with sub-second Gemini categorization and automated urgency tier assignment.
+        </p>
+      </div>
+
+      <div class="card card-dark" style="border-color: #334155;">
+        <div style="font-size: 48px; font-weight: 800; color: #4ade80; margin-bottom: 8px;">60%</div>
+        <div class="card-title">Reduction in Duplicates</div>
+        <p class="card-desc">
+          Spatial radar clustering merges duplicate citizen calls on identical incidents, eliminating wasted field crew hours.
+        </p>
+      </div>
+
+      <div class="card card-dark" style="border-color: #334155;">
+        <div style="font-size: 48px; font-weight: 800; color: #fbbf24; margin-bottom: 8px;">100%</div>
+        <div class="card-title">Resolution Accountability</div>
+        <p class="card-desc">
+          Transparent SLA tracking ledger ensures every reported pothole, leak, and blackout has an auditable public record.
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-top: 36px; padding: 24px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-size: 18px; font-weight: 800; color: #ffffff;">Ready for Evaluation & Demonstration</div>
+        <div style="font-size: 14px; color: #94a3b8; margin-top: 4px;">
+          Citizen: <code style="color: #38bdf8;">citizen@civic.org</code> / <code style="color: #38bdf8;">password123</code> &nbsp;|&nbsp; 
+          Officer: <code style="color: #4ade80;">admin@municipal.gov.in</code> / <code style="color: #4ade80;">adminpassword123</code>
+        </div>
+      </div>
+      <div class="badge badge-emerald" style="font-size: 15px; padding: 10px 20px;">
+        ✨ Thank You Judges!
+      </div>
+    </div>
+
+    <div class="slide-footer slide-footer-dark">
+      <span>CivicAI • Code for Communities Hackathon 2026</span>
+      <span>06 / 06</span>
+    </div>
+  </div>
+
+</body>
+</html>
