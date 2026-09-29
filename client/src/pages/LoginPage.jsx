@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,56 +30,6 @@ export default function LoginPage() {
     } else {
       setEmail('citizen@civic.org');
       setPassword('password123');
-    }
-  };
-
-  const handleQuickDemoLogin = async (targetRole) => {
-    setErrorMessage('');
-    setIsSubmitting(true);
-    setSelectedRole(targetRole);
-
-    const demoCreds = targetRole === 'admin'
-      ? {
-          name: 'Municipal Commissioner (BMC)',
-          email: 'admin@municipal.gov.in',
-          password: 'adminpassword123',
-          role: 'admin',
-          phone: '+91 9988776655',
-          ward: 'Central Municipal Headquarters'
-        }
-      : {
-          name: 'Demo Citizen (Bhubaneswar)',
-          email: 'citizen@civic.org',
-          password: 'password123',
-          role: 'citizen',
-          phone: '+91 9876543210',
-          ward: 'Ward 14 (Central Bhubaneswar)'
-        };
-
-    try {
-      // 1. Try direct login with seeded credentials
-      let res;
-      try {
-        res = await login(demoCreds.email, demoCreds.password);
-      } catch (loginErr) {
-        // 2. If user does not exist in DB yet, auto-provision demo account
-        await register(demoCreds);
-        res = await login(demoCreds.email, demoCreds.password);
-      }
-
-      const userRole = res?.user?.role || targetRole;
-      if (from) {
-        navigate(from, { replace: true });
-      } else if (userRole === 'admin') {
-        navigate('/app/admin', { replace: true });
-      } else {
-        navigate('/app/citizen', { replace: true });
-      }
-    } catch (err) {
-      console.error('Instant demo login failed:', err);
-      setErrorMessage(err.message || 'Demo authentication failed. Please enter credentials manually.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -126,62 +76,7 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 sm:px-10 shadow-xs border border-slate-200 sm:rounded-2xl">
-          
-          {/* 1-Click Evaluation Login (2-Minute Demo Enabler) */}
-          <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-200/60 shadow-2xs">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Fast Evaluation Access (1-Click)</span>
-              </span>
-              <span className="text-[10px] font-semibold text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200">
-                Hackathon Ready
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
-              Instantly authenticate as either persona with auto-provisioned test credentials:
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('citizen')}
-                disabled={isSubmitting}
-                className="p-2.5 rounded-lg border border-blue-300 bg-white hover:bg-blue-50 text-blue-900 text-left transition-all shadow-2xs disabled:opacity-50 cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <UserCheck className="w-4 h-4 text-blue-600" />
-                  <span className="text-[10px] font-bold text-blue-600">CITIZEN</span>
-                </div>
-                <div className="font-bold text-xs">Resident Citizen</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Lodge & track reports</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('admin')}
-                disabled={isSubmitting}
-                className="p-2.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-white text-left transition-all shadow-2xs disabled:opacity-50 cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="text-[10px] font-bold text-emerald-400">ADMIN</span>
-                </div>
-                <div className="font-bold text-xs">Municipal Officer</div>
-                <div className="text-[10px] text-slate-300 mt-0.5">Triage, map & dispatch</div>
-              </button>
-            </div>
-          </div>
-
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-slate-400 font-medium">Or sign in manually</span>
-            </div>
-          </div>
-
-          {/* Manual Persona Selector */}
+          {/* Persona Selector */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
