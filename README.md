@@ -1,14 +1,12 @@
 # CivicAI 🏛️🤖
 ### AI-Powered Digital Public Infrastructure for Municipal Governance & Grievance Resolution
 
-[![Vercel Deployment](https://img.shields.io/badge/Frontend-Vercel-black?style=flat&logo=vercel)](https://civic-ai-mocha.vercel.app/)
-[![Render Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=flat&logo=render)](https://civicai-backend-jibx.onrender.com/api/health)
+[![Vercel Deployment](https://img.shields.io/badge/Production%20App-Vercel-black?style=flat&logo=vercel)](https://civic-ai-mocha.vercel.app/)
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini%202.5-4285F4?style=flat&logo=google)](https://ai.google.dev/)
 [![Geoapify](https://img.shields.io/badge/GIS-Geoapify%20API-FF6B6B?style=flat)](https://www.geoapify.com/)
 [![MongoDB Atlas](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248?style=flat&logo=mongodb)](https://www.mongodb.com/atlas)
 
-> **Live Production App:** [https://civic-ai-mocha.vercel.app/](https://civic-ai-mocha.vercel.app/)  
-> **Production API:** [https://civicai-backend-jibx.onrender.com/api](https://civicai-backend-jibx.onrender.com/api)
+> **Live Production App:** [https://civic-ai-mocha.vercel.app/](https://civic-ai-mocha.vercel.app/)
 
 ---
 
@@ -108,7 +106,7 @@ flowchart TD
 | **Database & ODM** | MongoDB Atlas, Mongoose | Flexible NoSQL schema with geospatial indices |
 | **AI / LLM Integration** | Google Gemini API (`@google/genai`) | Autonomous categorization, severity scoring, duplicate check, and intervention synthesis |
 | **Authentication** | JSON Web Tokens (JWT), bcryptjs | Secure stateless auth with strict role separation (`citizen` vs `admin`) |
-| **Hosting & CI/CD** | Vercel (Frontend), Render (Backend) | Production continuous deployment pipeline |
+| **Hosting & Deployment** | Vercel | Production cloud deployment |
 
 ---
 
